@@ -6,11 +6,16 @@ from interface.objects import Taxonomy
 from pyon.ion.granule.record_dictionary import RecordDictionaryTool
 from pyon.ion.granule.taxonomy import TaxyTool
 from numpy import array
+from pyon.public import log
 
 def build_instrument(configuration):
     ''' factory method to build instruments based on configuration '''
     if configuration is None:
         return Simple3DInstrument()
+    if callable(configuration):
+        i = Simple3DInstrument()
+        i.get_value = configuration
+        return i
     raise ApeException("don't know how to build instrument from " + repr(configuration))
 
 class InstrumentType(object):
@@ -46,9 +51,9 @@ class Simple3DInstrument(InstrumentType):
 
     def get_granule(self, **args):
         if self.use_new_granule:
-            self.get_granule_NEW(**args)
+            return self.get_granule_NEW(**args)
         else:
-            self.get_granule_OLD(**args)
+            return self.get_granule_OLD(**args)
 
     def get_granule_OLD(self, stream_id=None, time=None, **_):
         psc = PointSupplementConstructor(point_definition=self.stream_definition, stream_id=stream_id)

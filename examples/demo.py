@@ -2,7 +2,7 @@ import gevent.monkey
 
 gevent.monkey.patch_all(aggressive=False)
 
-from ape.manager.simple_manager import SimpleManager
+from ape.manager.simple_manager import SimpleManager, InventoryListener
 from ape.common.requests import PingRequest, AddComponent, StartRequest, InventoryRequest
 from ape.component.instrument_simulator import InstrumentSimulator
 from ape.component.instrument_simulator import Configuration as InstrumentConfiguration
@@ -10,20 +10,23 @@ from ape.component.consumer import DataProductConsumer
 from ape.component.consumer import Configuration as ConsumerConfiguration
 from ape.common.messages import  component_id, agent_id, component_type
 from time import sleep
+import math
 
 def wait(a):
     raw_input('--- press enter to continue ---')
 #    sleep(a)
 
 def main():
+    l = InventoryListener()
     m = SimpleManager()
+    m.add_listener(l)
 
     # get inventory -- see what agents we have running
     m.send_request(InventoryRequest())
     sleep(5)
 
     count = 0
-    for agent in m.inventory.keys():
+    for agent in l.inventory.keys():
         print 'adding producer/consumer for agent: ' + agent
         count += 1
         ext = str(count)
@@ -31,11 +34,10 @@ def main():
         producer_component_name = 'pro-'+ext
         consumer_component_name = 'con-'+ext
 
-        producer_config = InstrumentConfiguration(data_product_name, 0, persist_product=False,
-                                    sleep_even_zero=False,
-                                    log_timing=True, timing_rate=10000)
+        producer_config = InstrumentConfiguration(data_product_name, 2, instrument_configuration=math.sin,
+                                    persist_product=False, log_timing=True, timing_rate=1000)
         producer = InstrumentSimulator(producer_component_name, None, producer_config)
-        consumer = DataProductConsumer(consumer_component_name, None, ConsumerConfiguration(data_product_name))
+        consumer = DataProductConsumer(consumer_component_name, None, ConsumerConfiguration(data_product_name, log_value=True))
 
         m.send_request(AddComponent(producer), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
         m.send_request(AddComponent(consumer), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))

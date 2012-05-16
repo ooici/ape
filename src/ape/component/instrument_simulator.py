@@ -156,8 +156,8 @@ class InstrumentSimulator(ApeComponent):
         self.emit_granules = False
 
     def run(self):
-        ''' main loop: essentially create granule, publish granule, then pause to remain at target rate
-            make complicated by the timing and reporting steps in between each operation
+        ''' main loop: essentially create granule, publish granule, then pause to remain at target rate.
+            made complicated by the timing and reporting steps in between each operation.
         '''
         target_iteration_time = sleep_time = self.configuration.interval
         first_batch = True
@@ -173,6 +173,7 @@ class InstrumentSimulator(ApeComponent):
                     granule_count+=1
 
                 granule = self.configuration.instrument.get_granule(time=time())
+#                log.debug('sending ' + repr(granule))
 
                 if do_timing:
                     granule_end = publish_start = time()

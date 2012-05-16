@@ -1,3 +1,6 @@
+''' simple data product consumer that receives data from an endpoint and throws it away. '''
+
+
 from uuid import uuid4 as unique
 from pyon.ion.transform import TransformDataProcess
 import logging as log
@@ -11,8 +14,9 @@ from interface.services.dm.itransform_management_service import TransformManagem
 from interface.objects import StreamQuery
 
 class Configuration(object):
-    def __init__(self, data_product):
+    def __init__(self, data_product, log_value=False):
         self.data_product = data_product
+        self.log_value = log_value
 
 class DataProductConsumer(ApeComponent):
     def __init__(self, name, agent, configuration):
@@ -57,6 +61,10 @@ class DataProductConsumer(ApeComponent):
     def register_process_definition(self):
         # Create process definitions which will used to spawn off the transform processes
         process_definition = IonObject(RT.ProcessDefinition, name='ape_consumer_process')
+#        if self.configuration.log_value:
+#            process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_LogValueTransform' }
+#        else:
+#            process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_NoOpTransform' }
         process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_NoOpTransform' }
         process_definition_id, _ = self.resource_registry.create(process_definition)
         return process_definition_id
@@ -82,7 +90,18 @@ class DataProductConsumer(ApeComponent):
 class _NoOpTransform(TransformDataProcess):
     def on_start(self):
         log.debug('starting transform')
-        pass
-    def process(self, packet):
-#        log.debug('ignoring message')
-        pass
+    def process(self, granule):
+        log.debug('ignoring message: ' + repr(granule))
+        try:
+            value = granule.record_dictionary['value']
+#            log.info('received value from data product: ' + value)
+        except:
+            log.info('exception unpacking granule: ' + granule)
+#        pass
+
+class _LogValueTransform(TransformDataProcess):
+    def on_start(self):
+        log.debug('starting transform')
+    def process(self, granule):
+        value = granule.record_dictionary['value']
+        log.info('received value from data product: ' + repr(value))
