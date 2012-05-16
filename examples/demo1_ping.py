@@ -17,10 +17,10 @@ def main():
     p = PingRequest()
     m = SimpleManager()
 
-    print 'sending 100 ping requests to all components on all agents'
+    print 'sending 100 ping requests to all components on all agents, one every 5 seconds'
     for n in xrange(100):
         m.send_request(p)
-        print 'sent a ping (next ping in 5 seconds)'
+        print 'sent a ping'
         sleep(5)
     print 'sending complete'
     wait(2)

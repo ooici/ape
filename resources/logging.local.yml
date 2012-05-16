@@ -1,0 +1,29 @@
+loggers:
+  ape:
+    handlers: [console]
+    level: DEBUG
+
+#  pyon.net:
+#    handlers: [console]
+#    level: DEBUG 
+
+  pyon:
+    handlers: [console]
+    level: CRITICAL 
+
+  prototype:
+    handlers: [console]
+    level: WARNING
+
+  ion:
+    handlers: [console]
+    level: WARNING
+
+  examples:
+    handlers: [console]
+    level: WARNING
+
+  prototype:
+    handlers: [console]
+    level: WARNING
+
