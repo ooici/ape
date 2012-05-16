@@ -20,7 +20,7 @@ def main():
     print 'sending 100 ping requests to all components on all agents'
     for n in xrange(100):
         m.send_request(p)
-        sleep(.5)
+        sleep(5)
     print '--- sent pings ----'
     wait(2)
 

@@ -65,6 +65,7 @@ def filter_applies(obj, filter):
         return False
     if filter.get('agent_id') and isinstance(obj, BaseApeAgent) and obj.agent_id != filter.get('agent_id'):
         return False
-    if filter.get('type') and not isinstance(obj, filter.get('type')):
-        return False
+    if filter.get('type'):
+        if not obj.__class__.__name__==filter.get('type') and not isinstance(obj, filter.get('type')):
+            return False
     return True

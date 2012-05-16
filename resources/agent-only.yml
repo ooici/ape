@@ -9,53 +9,53 @@ apps:
   # Bootstrapper app performs initializations
   ##################################
 
-  - name: resource_registry
-    description: Resource registry service
-    version: 0.1
-    processapp: [resource_registry, ion.services.coi.resource_registry_service, ResourceRegistryService]
-
-  - name: bootstrap
-    version: 0.1
-    processapp: [bootstrap, ion.core.bootstrap_service, BootstrapService]
-    config:
-      level: resource_registry
-
-  ##################################
-  # HIGHER LEVEL SERVICES - TODO: CORRECT ORDER NEEDS TO BE FIGURED OUT ONCE IMPLEMENTATION HAS BEEN COMPLETED
-  ##################################
-
-  - name: service_management
-    version: 0.1
-    processapp: [service_management, ion.services.coi.service_management_service, ServiceManagementService]
-
-
-### REQUIRED
-  - name: process_dispatcher
-    version: 0.1
-    processapp: [process_dispatcher, ion.services.cei.process_dispatcher_service, ProcessDispatcherService]
-
-  #### DM Services
-  - name: pubsub_management
-    version: 0.1
-    processapp: [pubsub_management, ion.services.dm.distribution.pubsub_management_service, PubsubManagementService]
-
-#  - name: ingestion_management
+#  - name: resource_registry
+#    description: Resource registry service
 #    version: 0.1
-#    processapp: [ingestion_management, ion.services.dm.ingestion.ingestion_management_service, IngestionManagementService]
-
-  - name: transform_management
-    version: 0.1
-    processapp: [transform_management, ion.services.dm.transformation.transform_management_service, TransformManagementService]
-
-### REQUIRED
-  - name: dataset_management
-    version: 0.1
-    processapp: [dataset_management, ion.services.dm.inventory.dataset_management_service, DatasetManagementService]
-
-### REQUIRED
-  - name: data_retriever
-    version: 0.1
-    processapp: [data_retriever, ion.services.dm.inventory.data_retriever_service, DataRetrieverService]
+#    processapp: [resource_registry, ion.services.coi.resource_registry_service, ResourceRegistryService]
+#
+#  - name: bootstrap
+#    version: 0.1
+#    processapp: [bootstrap, ion.core.bootstrap_service, BootstrapService]
+#    config:
+#      level: resource_registry
+#
+#  ##################################
+#  # HIGHER LEVEL SERVICES - TODO: CORRECT ORDER NEEDS TO BE FIGURED OUT ONCE IMPLEMENTATION HAS BEEN COMPLETED
+#  ##################################
+#
+#  - name: service_management
+#    version: 0.1
+#    processapp: [service_management, ion.services.coi.service_management_service, ServiceManagementService]
+#
+#
+#### REQUIRED
+#  - name: process_dispatcher
+#    version: 0.1
+#    processapp: [process_dispatcher, ion.services.cei.process_dispatcher_service, ProcessDispatcherService]
+#
+#  #### DM Services
+#  - name: pubsub_management
+#    version: 0.1
+#    processapp: [pubsub_management, ion.services.dm.distribution.pubsub_management_service, PubsubManagementService]
+#
+##  - name: ingestion_management
+##    version: 0.1
+##    processapp: [ingestion_management, ion.services.dm.ingestion.ingestion_management_service, IngestionManagementService]
+#
+#  - name: transform_management
+#    version: 0.1
+#    processapp: [transform_management, ion.services.dm.transformation.transform_management_service, TransformManagementService]
+#
+#### REQUIRED
+#  - name: dataset_management
+#    version: 0.1
+#    processapp: [dataset_management, ion.services.dm.inventory.dataset_management_service, DatasetManagementService]
+#
+#### REQUIRED
+#  - name: data_retriever
+#    version: 0.1
+#    processapp: [data_retriever, ion.services.dm.inventory.data_retriever_service, DataRetrieverService]
         
 ######################
 
@@ -70,22 +70,22 @@ apps:
         inbound_exchange: ape-requests
         outbound_exchange: ape-results
 
-  ##### SA SERVICES
-### REQUIRED
-  - name: data_acquisition_management
-    version: 0.1
-    processapp: [data_acquisition_management, ion.services.sa.acquisition.data_acquisition_management_service, DataAcquisitionManagementService]
-
-### REQUIRED
-  - name: data_product_management
-    version: 0.1
-    processapp: [data_product_management, ion.services.sa.product.data_product_management_service, DataProductManagementService]
-
-### REQUIRED
-  - name: instrument_management_service
-    version: 0.1
-    processapp: [instrument_management_service, ion.services.sa.instrument.instrument_management_service, InstrumentManagementService]
-
+#  ##### SA SERVICES
+#### REQUIRED
+#  - name: data_acquisition_management
+#    version: 0.1
+#    processapp: [data_acquisition_management, ion.services.sa.acquisition.data_acquisition_management_service, DataAcquisitionManagementService]
+#
+#### REQUIRED
+#  - name: data_product_management
+#    version: 0.1
+#    processapp: [data_product_management, ion.services.sa.product.data_product_management_service, DataProductManagementService]
+#
+#### REQUIRED
+#  - name: instrument_management_service
+#    version: 0.1
+#    processapp: [instrument_management_service, ion.services.sa.instrument.instrument_management_service, InstrumentManagementService]
+#
 ### REQUIRED
 #  - name: ingestion_launcher
 #    version: 0.1

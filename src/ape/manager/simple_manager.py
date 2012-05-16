@@ -15,14 +15,23 @@ class _ExecBlocking(Thread):
         self.inbound_channel = inbound_channel
         super(_ExecBlocking,self).__init__()
     def run(self):
-        print 'about to start consuming'
         self.inbound_channel.start_consuming()
-        print 'start_consuming completed'
+
+class Listener(object):
+    def on_message(self):
+        pass
+
+class InventoryListener(Listener):
+    def __init__(self):
+        self.inventory = {}
+    def on_message(self, message):
+        if isinstance(message.result, InventoryResult):
+            self.inventory[message.agent] = message.result
 
 class SimpleManager(object):
     ''' simple manager that lets you send requests and view results '''
     def __init__(self):
-        self.inventory = dict()
+        self.listeners = []
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         self.outbound_channel = self.connection.channel()
         self.outbound_channel.exchange_declare(exchange=outbound_exchange, type='fanout')
@@ -38,14 +47,17 @@ class SimpleManager(object):
         self.thread = _ExecBlocking(self.inbound_channel)
         self.thread.setDaemon(True)
         self.thread.start()
-        sleep(5) # give channel time to start
-        print 'should be consuming now'
+        sleep(5) # give consumer time to start before returning control to client
+
+    def add_listener(self, listener):
+        assert isinstance(listener, Listener)
+        self.listeners.append(listener)
+
     def callback(self, ch, method, properties, body):
-        print 'unpacking'
         message = ApeResultMessage().unpack(body)
-        print "%s %s:\t%s" % (message.agent, message.component, repr(message.result))
-        if isinstance(message.result, InventoryResult):
-            self.inventory[message.agent] = message.result
+        [ l.on_message(message) for l in self.listeners ]
+        # TODO: implement as a listener
+
     def send_request(self, request, agent_filter=ALL_AGENTS, component_filter=None):
         if isinstance(request, ApeRequestMessage):
             message = request
@@ -54,7 +66,9 @@ class SimpleManager(object):
         else:
             raise ApeException("don't know how to send type: " + str(type(request)))
         self.outbound_channel.basic_publish(exchange=outbound_exchange, routing_key='', body=message.pack())
+
     def close(self):
+        # TODO: these either hang or log exceptions!  how to close cleanly?
 #        self.inbound_channel.basic_cancel(inbound_exchange)
 #        self.outbound_channel.close()
 #        self.inbound_channel.stop_consuming()

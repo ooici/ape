@@ -2,7 +2,7 @@ import gevent.monkey
 
 gevent.monkey.patch_all(aggressive=False)
 
-from ape.manager.simple_manager import SimpleManager
+from ape.manager.simple_manager import SimpleManager, InventoryListener
 from ape.common.requests import PingRequest, AddComponent, InventoryRequest
 from ape.component.instrument_simulator import InstrumentSimulator
 from ape.component.instrument_simulator import Configuration as InstrumentConfiguration
@@ -14,14 +14,16 @@ def wait(a):
 #    sleep(a)
 
 def main():
+    l = InventoryListener()
     m = SimpleManager()
+    m.add_listener(l)
 
     m.send_request(InventoryRequest(), component_filter=component_id('AGENT'))
     print '---> sent inventory request'
     sleep(2)
 
     print '---> inventory now:\n'
-    show_inventory(m.inventory)
+    show_inventory(l.inventory)
     wait(10)
 
     sim1 = InstrumentSimulator('ins1', None, InstrumentConfiguration('str1', 0.05))
@@ -42,9 +44,9 @@ def main():
     sleep(2)
 
     print '---> inventory now:\n'
-    show_inventory(m.inventory)
+    show_inventory(l.inventory)
     wait(10)
-    show_inventory(m.inventory)
+    show_inventory(l.inventory)
     wait(10)
 
 def show_inventory(i):

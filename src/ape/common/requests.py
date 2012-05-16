@@ -25,3 +25,6 @@ class UnregisterInstrument(ApeRequest): pass
 class PerformanceResult(ApeResult):
     def __init__(self, data):
         self.data = data
+#
+#class RegistryLookup(ApeRequest):
+#    def __init__(self,

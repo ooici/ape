@@ -119,6 +119,12 @@ class InstrumentSimulator(ApeComponent):
                 log.debug('failed to read model, creating instead: ' + self.configuration.instrument.model_name)
                 model = IonObject(RT.InstrumentModel, name=self.configuration.instrument.model_name) #, description=self.configuration.model_name, model_label=self.data_source_name)
                 self.model_id = self.imsclient.create_instrument_model(model)
+
+            # TODO: remove this block after resource registry issue is solved
+            try:
+                re_read = _read_model_id()
+            except:
+                log.debug('failed to read even after just wrote')
         return self.model_id
 
     def _read_model_id(self):

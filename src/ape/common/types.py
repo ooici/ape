@@ -31,7 +31,6 @@ class ApeComponent(object):
         if self.was_started:
             raise Exception("lifecycle error -- can only start component once")
         self._start()
-        print 'component was started: ' + self.__class__.__name__;
     def perform_action(self, request):
         pass
     def report(self, results):
@@ -56,7 +55,6 @@ class ApeRequest(object):
 
 class ApeResult(object):
     def __str__(self):
-        print 'generating string for ApeResult'
         return self.__class__.__name__
 
 
