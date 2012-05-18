@@ -18,6 +18,7 @@ from interface.services.sa.idata_product_management_service import DataProductMa
 from math import sin
 from time import time, sleep
 from threading import Thread
+import traceback
 
 import pickle
 
@@ -87,7 +88,10 @@ class InstrumentSimulator(ApeComponent):
         product_ids,_ = self.resource_registry.find_resources(RT.DataProduct, None, self.configuration.name, id_only=True)
         if len(product_ids) > 0:
             log.debug('data product was already in the registry')
-            self.data_product_id = product_ids[0]
+            if self.configuration.easy_registration:
+                self.data_product_id = product_ids[0]
+            else:
+                raise ApeException('should not find data product in registry until i add it: ' + self.configuration.name)
         else:
             log.debug('adding data product to the registry')
             # Create InstrumentDevice
@@ -95,7 +99,7 @@ class InstrumentSimulator(ApeComponent):
             device_id = self.imsclient.create_instrument_device(instrument_device=device)
             self.imsclient.assign_instrument_model_to_instrument_device(instrument_model_id=self._get_model_id(), instrument_device_id=device_id)
             # create a stream definition
-            data_product = IonObject(RT.DataProduct,name=self.configuration.name,description='test stream')
+            data_product = IonObject(RT.DataProduct,name=self.configuration.name,description='ape producer')
             self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=self._get_streamdef_id())
             self.damsclient.assign_data_product(input_resource_id=device_id, data_product_id=self.data_product_id)
             if self.configuration.persist_product:
@@ -115,6 +119,7 @@ class InstrumentSimulator(ApeComponent):
         if self.model_id is None:
             try:
                 self.model_id = self._read_model_id()
+                self.model_id = self._read_model_id()
             except:
                 log.debug('failed to read model, creating instead: ' + self.configuration.instrument.model_name)
                 model = IonObject(RT.InstrumentModel, name=self.configuration.instrument.model_name) #, description=self.configuration.model_name, model_label=self.data_source_name)
@@ -122,12 +127,18 @@ class InstrumentSimulator(ApeComponent):
 
             # TODO: remove this block after resource registry issue is solved
             try:
-                re_read = _read_model_id()
-            except:
-                log.debug('failed to read even after just wrote')
+                sleep(5)
+                re_read = self._read_model_id()
+                log.debug('ok, now read it the second time')
+            except Exception as ex:
+                log.debug('failed to read even after just wrote: ' + repr(traceback.format_exception_only(ex.__class__, ex)))
+#                log.debug('failed to read even after just wrote: ' + traceback.format_exception(ex.__class__, ex, traceback.extract_tb(ex)))
         return self.model_id
 
     def _read_model_id(self):
+        # debug reading instrument model
+        try_this = self.resource_registry.find_resources(restype=RT.InstrumentModel, id_only=True)
+        log.debug('found models: ' + repr(try_this))
         model_ids = self.resource_registry.find_resources(restype=RT.InstrumentModel, id_only=True, name=self.configuration.instrument.model_name)
         return model_ids[0][0]
 
@@ -145,7 +156,7 @@ class InstrumentSimulator(ApeComponent):
     class _DataEmitter(Thread):
         ''' do not make outer class a Thread b/c start() is already meaningful to a pyon process '''
         def __init__(self, instrument):
-            super(type(self),self).__init__()
+            Thread.__init__(self)
             self.instrument = instrument
         def run(self):
             self.instrument.run()
@@ -179,6 +190,7 @@ class InstrumentSimulator(ApeComponent):
                     granule_end = publish_start = time()
 
                 try:
+                    log.debug('publishing')
                     self.publisher.publish(granule)
                 except Exception as e:
                     if self.keep_running:
@@ -210,6 +222,7 @@ class InstrumentSimulator(ApeComponent):
                         if first_batch:
                             granule_count = granule_elapsed_seconds = publish_elapsed_seconds = sleep_elapsed_seconds = 0.
                             first_batch = False
+                            run_start_time = time()
                         else:
                             adjust_timing = False
                             if self.configuration.log_timing:
@@ -219,6 +232,7 @@ class InstrumentSimulator(ApeComponent):
                                            granule_sum_size/granule_count))
                             if self.configuration.report_timing:
                                 report = { 'count': granule_count,
+                                           'time': time() - run_start_time,
                                            'publish':publish_elapsed_seconds/granule_count,
                                            'granule':granule_elapsed_seconds/granule_count,
                                            'sleep': sleep_elapsed_seconds/granule_count,

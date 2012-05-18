@@ -22,6 +22,11 @@ class StopRequest(ApeRequest): pass
 class RegisterWithContainer(ApeRequest): pass
 class UnregisterInstrument(ApeRequest): pass
 
+# operate on sandbags
+class ChangeConfiguration(ApeRequest):
+    def __init__(self, configuration):
+        self.configuration = configuration
+
 class PerformanceResult(ApeResult):
     def __init__(self, data):
         self.data = data

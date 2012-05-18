@@ -2,6 +2,7 @@
 
 
 from uuid import uuid4 as unique
+from pyon.ion.granule.record_dictionary import RecordDictionaryTool
 from pyon.ion.transform import TransformDataProcess
 import logging as log
 
@@ -21,9 +22,7 @@ class Configuration(object):
 class DataProductConsumer(ApeComponent):
     def __init__(self, name, agent, configuration):
         unique_string = name + "_" + str(unique())
-        self.process_name = "ape_consumer_" + unique_string
-        self.exchange_name = 'ape_exchange_' + unique_string
-        self.instance_name = 'ape_transform_' + unique_string
+        self.process_name = 'ape_consumer_' + unique_string
         self.easy_registration = True
         super(DataProductConsumer,self).__init__(name, agent, configuration)
 
@@ -43,11 +42,11 @@ class DataProductConsumer(ApeComponent):
 
     def _start(self):
         log.debug('consumer starting')
-        self.resource_registry = ResourceRegistryServiceClient(node=self.agent.container.node)
         pubsub_management = PubsubManagementServiceClient(node=self.agent.container.node)
+        self.resource_registry = ResourceRegistryServiceClient(node=self.agent.container.node)
         self.transform_management = TransformManagementServiceClient(node=self.agent.container.node)
         data_product_objs,_ = self.resource_registry.find_resources(restype=RT.DataProduct, name=self.configuration.data_product)
-        if len(data_product_objs)==0:
+        if not len(data_product_objs):
             raise ApeException('did not find data product for name: ' + self.configuration.data_product)
 #        stream_ids,_ = self.resource_registry.find_objects(self.configuration.data_product, PRED.hasStream, None, True)
         stream_ids,_ = self.resource_registry.find_resources(RT.Stream, name=self.configuration.data_product)
@@ -55,17 +54,17 @@ class DataProductConsumer(ApeComponent):
 #        stream_id = data_product_objs[0].stream_definition_id
         stream_definition_id = pubsub_management.find_stream_definition(stream_id=stream_id, id_only=True)
         query = StreamQuery(stream_ids)
-        subscription_id = pubsub_management.create_subscription(query=query, exchange_name=self.exchange_name)
-        self.transform = self.transform_management.create_transform(name=self.instance_name, in_subscription_id=subscription_id,process_definition_id=self._get_process_definition_id())
+        subscription_id = pubsub_management.create_subscription(query=query, exchange_name=self.process_name + '_exchange')
+        self.transform = self.transform_management.create_transform(name=self.process_name + '_transform', in_subscription_id=subscription_id,process_definition_id=self._get_process_definition_id())
 
     def register_process_definition(self):
         # Create process definitions which will used to spawn off the transform processes
         process_definition = IonObject(RT.ProcessDefinition, name='ape_consumer_process')
-#        if self.configuration.log_value:
-#            process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_LogValueTransform' }
-#        else:
-#            process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_NoOpTransform' }
-        process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_NoOpTransform' }
+        if self.configuration.log_value:
+            process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_LogValueTransform' }
+        else:
+            process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_NoOpTransform' }
+#        process_definition.executable = { 'module': 'ape.component.consumer', 'class':'_NoOpTransform' }
         process_definition_id, _ = self.resource_registry.create(process_definition)
         return process_definition_id
 
@@ -91,17 +90,28 @@ class _NoOpTransform(TransformDataProcess):
     def on_start(self):
         log.debug('starting transform')
     def process(self, granule):
-        log.debug('ignoring message: ' + repr(granule))
-        try:
-            value = granule.record_dictionary['value']
-#            log.info('received value from data product: ' + value)
-        except:
-            log.info('exception unpacking granule: ' + granule)
+        pass
+#        log.debug('ignoring message: ' + repr(granule))
+#        try:
+#            log.debug('granule dictionary: ' + repr(granule.__dict__))
+#            log.debug('granule records: ' + repr(granule.record_dictionary))
+#            pass
+##            value = granule.record_dictionary['value']
+##            log.info('received value from data product: ' + value)
+#        except:
+#            log.info('exception unpacking granule: ' + granule)
 #        pass
 
 class _LogValueTransform(TransformDataProcess):
     def on_start(self):
+        super(TransformDataProcess,self).on_start()
         log.debug('starting transform')
     def process(self, granule):
-        value = granule.record_dictionary['value']
-        log.info('received value from data product: ' + repr(value))
+        tool = RecordDictionaryTool.load_from_granule(granule)
+        msg = ''
+        for (k,v) in tool.iteritems():
+            msg += '\n\t' + repr(k) + " => " + repr(v)
+        if msg:
+            log.debug('have granule with payload:' + msg)
+        else:
+            log.info('have empty granule')

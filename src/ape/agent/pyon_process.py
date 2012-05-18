@@ -41,7 +41,13 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
     def on_start(self):
         self.start_agent()
     def on_quit(self):
-        self.stop_agent()
+        log.debug('on_quit called')
+        if self.keep_running:
+            self.stop_agent()
+    def on_stop(self):
+        log.debug('on_stop called')
+        if self.keep_running:
+            self.stop_agent()
 
     def start_agent(self):
         log.debug('start_agent called')
@@ -69,6 +75,7 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
             component.perform_action(request)
         except Exception as ex:
             log.error('request failed: ' + str(request) + '\nexception: ' + str(ex) + '\nstack trace: ' + format_exc())
+        log.debug('completed: ' + str(request))
 
     def perform_action(self, request):
         if isinstance(request, PingRequest):

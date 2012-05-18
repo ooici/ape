@@ -1,4 +1,5 @@
 ''' simulated instrument types '''
+from ape.common.types import ApeException
 
 from prototype.sci_data.constructor_apis import StreamDefinitionConstructor, PointSupplementConstructor
 from pyon.ion.granule.granule import build_granule, Granule
@@ -15,6 +16,10 @@ def build_instrument(configuration):
     if callable(configuration):
         i = Simple3DInstrument()
         i.get_value = configuration
+        return i
+    if isinstance(configuration, int):
+        i = Simple3DInstrument()
+        i.message_size = configuration
         return i
     raise ApeException("don't know how to build instrument from " + repr(configuration))
 
@@ -63,13 +68,13 @@ class Simple3DInstrument(InstrumentType):
         return granule
 
     def get_granule_NEW(self, producer_id='UNUSED', time=None, **_):
-        payload = RecordDictionaryTool(self.tax, length=1)
+        payload = RecordDictionaryTool(self.tax, length=self.message_size)
         value = self.get_value(time)
-        payload['value'] = array([value])
+        payload['value'] = array([value]*self.message_size)
         granule = build_granule(data_producer_id=producer_id, taxonomy=self.tax, record_dictionary=payload)
         return granule
 
     def get_location(self, time):
         return (0,0,0)#(longitude, latitude, elevation)
     def get_value(self, time):
-        return 0
+        return 0.1
