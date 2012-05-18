@@ -23,10 +23,10 @@ import traceback
 import pickle
 
 class Configuration(object):
-    def __init__(self, name, interval_seconds, instrument_configuration=None, sleep_even_zero=True,
+    def __init__(self, data_product, interval_seconds, instrument_configuration=None, sleep_even_zero=True,
                  easy_registration=True, persist_product=False,
                  timing_rate=500, log_timing=True, report_timing=True, include_size=False):
-        self.name = name
+        self.data_product = data_product
         self.interval = interval_seconds           # target rate (seconds) to publish a granule
         self.instrument = build_instrument(instrument_configuration)
         self.easy_registration = easy_registration # register as needed, skip if already registered
@@ -85,21 +85,20 @@ class InstrumentSimulator(ApeComponent):
         # TODO: handle more than one ID returned from registry
         # TODO: fail if request register but already in registry (and not easy_registration)
         # TODO: should register device agent
-        product_ids,_ = self.resource_registry.find_resources(RT.DataProduct, None, self.configuration.name, id_only=True)
+        product_ids,_ = self.resource_registry.find_resources(RT.DataProduct, None, self.configuration.data_product, id_only=True)
         if len(product_ids) > 0:
-            log.debug('data product was already in the registry')
             if self.configuration.easy_registration:
                 self.data_product_id = product_ids[0]
             else:
-                raise ApeException('should not find data product in registry until i add it: ' + self.configuration.name)
+                raise ApeException('should not find data product in registry until i add it: ' + self.configuration.data_product)
         else:
             log.debug('adding data product to the registry')
             # Create InstrumentDevice
-            device = IonObject(RT.InstrumentDevice, name=self.configuration.name, description='instrument simulator', serial_number=self.configuration.name )
+            device = IonObject(RT.InstrumentDevice, name=self.configuration.data_product, description='instrument simulator', serial_number=self.configuration.data_product )
             device_id = self.imsclient.create_instrument_device(instrument_device=device)
             self.imsclient.assign_instrument_model_to_instrument_device(instrument_model_id=self._get_model_id(), instrument_device_id=device_id)
             # create a stream definition
-            data_product = IonObject(RT.DataProduct,name=self.configuration.name,description='ape producer')
+            data_product = IonObject(RT.DataProduct,name=self.configuration.data_product,description='ape producer')
             self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=self._get_streamdef_id())
             self.damsclient.assign_data_product(input_resource_id=device_id, data_product_id=self.data_product_id)
             if self.configuration.persist_product:
@@ -111,7 +110,7 @@ class InstrumentSimulator(ApeComponent):
 #            log.debug('data producer already in the registry')
 #            self.data_producer_id = producer_ids[0]
 #        else:
-        self.data_producer_id = 'MISNAMED'
+        self.data_producer_id = 'UNUSED'
 
         self._create_publisher()
 
@@ -121,24 +120,13 @@ class InstrumentSimulator(ApeComponent):
                 self.model_id = self._read_model_id()
                 self.model_id = self._read_model_id()
             except:
-                log.debug('failed to read model, creating instead: ' + self.configuration.instrument.model_name)
                 model = IonObject(RT.InstrumentModel, name=self.configuration.instrument.model_name) #, description=self.configuration.model_name, model_label=self.data_source_name)
                 self.model_id = self.imsclient.create_instrument_model(model)
-
-            # TODO: remove this block after resource registry issue is solved
-            try:
-                sleep(5)
-                re_read = self._read_model_id()
-                log.debug('ok, now read it the second time')
-            except Exception as ex:
-                log.debug('failed to read even after just wrote: ' + repr(traceback.format_exception_only(ex.__class__, ex)))
-#                log.debug('failed to read even after just wrote: ' + traceback.format_exception(ex.__class__, ex, traceback.extract_tb(ex)))
         return self.model_id
 
     def _read_model_id(self):
         # debug reading instrument model
         try_this = self.resource_registry.find_resources(restype=RT.InstrumentModel, id_only=True)
-        log.debug('found models: ' + repr(try_this))
         model_ids = self.resource_registry.find_resources(restype=RT.InstrumentModel, id_only=True, name=self.configuration.instrument.model_name)
         return model_ids[0][0]
 
@@ -168,7 +156,7 @@ class InstrumentSimulator(ApeComponent):
 
     def run(self):
         ''' main loop: essentially create granule, publish granule, then pause to remain at target rate.
-            made complicated by the timing and reporting steps in between each operation.
+            three lines of the useful code marked with ###, everything else is timing/reporting.
         '''
         target_iteration_time = sleep_time = self.configuration.interval
         first_batch = True
@@ -183,14 +171,15 @@ class InstrumentSimulator(ApeComponent):
                 if do_timing:
                     granule_count+=1
 
+                ### step 1: create granule
                 granule = self.configuration.instrument.get_granule(time=time())
-#                log.debug('sending ' + repr(granule))
 
                 if do_timing:
                     granule_end = publish_start = time()
 
                 try:
-                    log.debug('publishing')
+                    ### step 2: publish granule
+                    log.debug(self.component_id + ' publishing granule')
                     self.publisher.publish(granule)
                 except Exception as e:
                     if self.keep_running:
@@ -209,6 +198,7 @@ class InstrumentSimulator(ApeComponent):
                     granule_sum_size += granule_size
                     sleep_start = time()
 
+                ### step 3: sleep to maintain configured rate
                 if sleep_time>0 or self.configuration.sleep_even_zero:
                     sleep(sleep_time)
 
@@ -226,8 +216,8 @@ class InstrumentSimulator(ApeComponent):
                         else:
                             adjust_timing = False
                             if self.configuration.log_timing:
-                                log.debug('%s: granule: %f, publish: %f, sleep: %f, size %f' %
-                                          (self.configuration.name, granule_elapsed_seconds/granule_count,
+                                log.info('%s: granule: %f, publish: %f, sleep: %f, size %f' %
+                                          (self.configuration.data_product, granule_elapsed_seconds/granule_count,
                                            publish_elapsed_seconds/granule_count, sleep_elapsed_seconds/granule_count,
                                            granule_sum_size/granule_count))
                             if self.configuration.report_timing:

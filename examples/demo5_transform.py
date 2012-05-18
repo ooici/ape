@@ -19,9 +19,7 @@ def wait(a):
     raw_input('--- press enter to continue ---')
 #    sleep(a)
 
-#def sum_values(input):
-#    return { 'value': sum(input['value']) }
-sum_values = "output = { 'value': sum(input['value']) }"
+sum_values = "output['value'] = sum(input['value']) "
 
 def main():
     l1 = InventoryListener()

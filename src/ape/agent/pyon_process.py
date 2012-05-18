@@ -69,13 +69,12 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
         self.components[component_id] = component
         self.inventory[component_id] = component.__class__.__name__
     def invoke_action(self, component_id, request):
-        log.debug('performing: ' + str(request))
+        log.debug(component_id + ' performing: ' + str(request))
         component = self.components[component_id]
         try:
             component.perform_action(request)
         except Exception as ex:
             log.error('request failed: ' + str(request) + '\nexception: ' + str(ex) + '\nstack trace: ' + format_exc())
-        log.debug('completed: ' + str(request))
 
     def perform_action(self, request):
         if isinstance(request, PingRequest):
@@ -84,10 +83,9 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
             self.add_component(request.component.component_id, request.component)
         elif isinstance(request, InventoryRequest):
             self.report('AGENT', InventoryResult(self.properties, self.inventory))
-            log.debug('properties: ' + repr(self.properties) + '\ninventory: ' + repr(self.inventory))
         else:
             log.info('action not performed: ' + request.__class__.__name__)
 
     def manage(self):
         ''' subclass should perform operations on components '''
-        log.debug("Nothing to do!")
+        pass
