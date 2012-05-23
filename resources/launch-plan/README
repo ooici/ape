@@ -1,0 +1,33 @@
+
+		APE PROJECT LAUNCH PLAN
+
+
+BEFORE YOU EDIT: 
+
+- The folder $APE_HOME/resources/launch-plan is a TEMPLATE for future launch plans created and executed.
+  Changes there get copied into every launch plan created by ape.  Edit with care!
+
+- The folder $APE_HOME/tmp/launch-plan-${NAME} is a WORKING COPY of a specific launch plan created by an ape script.
+  Changes there may not affect a launch already in progress (or could confuse cloudinitd).
+
+- You can make a copy of the template and edit that to try changes to the template plan used.
+  Use the option template= to specify:
+
+	my_troop = Troop(template='/SOME/OTHER/TEMPLATE/LAUNCH-PLAN')
+
+
+RELEVANT FILES:
+
+launch-plan/templates/container-config.json		default configuration for pycc containers launched
+							(determines contents of deploy.yml, pyon.conf and logging.conf)
+launch-plan/templates/troop-on-ec2.conf			base launch configuration for running containers on ec2
+launch-plan/templates/troop-on-localhost.conf		base launch configuration for running containers on localhost
+
+
+DOCUMENTATION:
+
+Please read ape documentation for more about using a launch plan within an ape test.
+See: https://confluence.oceanobservatories.org/display/CIDev/APE+Project
+
+Also this launch plan is based on the samples from the launch-plans CEI repository.
+See CEI documentation for more advanced changes.

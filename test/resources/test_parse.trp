@@ -1,0 +1,24 @@
+
+launch-name: test43    # name used by cloudinitd
+launch-target: localhost     # or ec2
+service-definitions: test-services.yml
+agent-service:
+    name: testing_agent  # which entry in r2deploy is ape agent, run on all pycc VMs
+    config:
+        typical: maybe   # added to agent definition in all generated deploy.yml (configure ape MQ?)
+
+nodes:
+    - name: container-with-services
+      count: 3
+      services: '*'  # all services from r2deploy.yml
+    - name: container-with-some-services
+      count: 2     # two identical servers launched
+      services: 5  # with 5 services per server in order through file
+    - name: container-basic-services
+      count: 2
+      services: [resource_registry, service_management]
+    - name: container-without-services
+      count: 5
+      services:    # only agent
+      config:
+          special: of_course   # added to agent definition in generated deploy.yml
