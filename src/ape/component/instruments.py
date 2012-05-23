@@ -8,19 +8,22 @@ from pyon.ion.granule.record_dictionary import RecordDictionaryTool
 from pyon.ion.granule.taxonomy import TaxyTool
 from numpy import array
 from pyon.public import log
+from math import sin
 
 def build_instrument(configuration):
     ''' factory method to build instruments based on configuration '''
     if configuration is None:
-        return Simple3DInstrument()
+        return SimpleInstrument()
     if callable(configuration):
-        i = Simple3DInstrument()
+        i = SimpleInstrument()
         i.get_value = configuration
         return i
     if isinstance(configuration, int):
-        i = Simple3DInstrument()
+        i = SimpleInstrument()
         i.message_size = configuration
         return i
+    if isinstance(configuration, tuple):
+        return OscillatingInstrument(configuration)
     raise ApeException("don't know how to build instrument from " + repr(configuration))
 
 class InstrumentType(object):
@@ -32,7 +35,7 @@ class InstrumentType(object):
     def get_granule(self, stream_id=None, time=None):
         pass
 
-class Simple3DInstrument(InstrumentType):
+class SimpleInstrument(InstrumentType):
     ''' instrument generating a single value at each time t with a fixed (x,y,h) location '''
     # TODO: use_new_granule as configuration option
     def __init__(self):
@@ -52,7 +55,11 @@ class Simple3DInstrument(InstrumentType):
         # used only in new-style granule
         self.tax = TaxyTool()
         self.tax.add_taxonomy_set('value')
+        self.tax.add_taxonomy_set('latitude')
+        self.tax.add_taxonomy_set('longitude')
         self.use_new_granule = True
+        self.message_size = 1
+        self.position = (0,0,0)
 
     def get_granule(self, **args):
         if self.use_new_granule:
@@ -69,12 +76,26 @@ class Simple3DInstrument(InstrumentType):
 
     def get_granule_NEW(self, producer_id='UNUSED', time=None, **_):
         payload = RecordDictionaryTool(self.tax, length=self.message_size)
+        lat,lon,_ = self.get_location(time)
         value = self.get_value(time)
         payload['value'] = array([value]*self.message_size)
+        payload['latitude'] = array([lat]*self.message_size)
+        payload['longitude'] = array([lon]*self.message_size)
+#        log.debug('sending granule: ' + repr(payload))
         granule = build_granule(data_producer_id=producer_id, taxonomy=self.tax, record_dictionary=payload)
         return granule
 
     def get_location(self, time):
-        return (0,0,0)#(longitude, latitude, elevation)
+        return self.position  #(longitude, latitude, elevation)
     def get_value(self, time):
         return 0.1
+
+class OscillatingInstrument(SimpleInstrument):
+    def __init__(self, tuple):
+        super(OscillatingInstrument, self).__init__()
+        x, y, self.phase, self.frequency, self.freq2 = tuple
+        self.position = (y, x, 0)
+    def get_value(self, time):
+        freq_offset = self.freq2*sin(time*self.freq2)
+        freq = self.frequency + freq_offset
+        return sin(time*freq+self.phase)

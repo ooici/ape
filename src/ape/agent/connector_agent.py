@@ -59,6 +59,6 @@ class ConnectorDrivenAgent(PyonApeAgent,ApeComponent):
         if filter_applies(self, request_message.agent_filter):
             for component in self.components.values():
                 applies = filter_applies(component, request_message.component_filter)
-                log.debug('testing filter against component: ' + component.component_id + ': ' + repr(applies))
+#                log.debug('testing filter against component: ' + component.component_id + ': ' + repr(applies))
                 if applies:
                     self.invoke_action(component.component_id, request_message.request)

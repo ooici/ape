@@ -1,3 +1,17 @@
+"""
+ape sample: sandbags
+
+components tie up arbitrary CPU/memory resources to help find system bottlenecks.
+start a system activity monitor before launching this script.
+it should use lots of memory for 30seconds, then release it;
+then use lots of CPU time for 30seconds.
+
+if a system is running at max capacity, it is generally experiencing a bottleneck.
+using a sandbag can help determine if the cause of the bottleneck if RAM, CPU, network bandwidth, etc.
+if wasting a little RAM doesn't diminish system capacity, then the bottleneck was not RAM.
+on the other hand, if wasting even a little CPU time reduced capacity a little, then the bottleneck is likely CPU.
+"""
+
 import gevent.monkey
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.dm.itransform_management_service import TransformManagementServiceClient
@@ -53,37 +67,6 @@ def main():
     config = SandbagConfiguration(ram_used_bytes=1000000, cpu_used_portion=.7)
     m.send_request(ChangeConfiguration(config), component_filter=component_id('sandbag'))
     sleep(30)
-#    m.add_listener(l1)
-#    m.add_listener(l2)
-#
-#    # get inventory -- see what agents we have running
-#    m.send_request(InventoryRequest())
-#    sleep(5)
-#
-#    count = 0
-#    for agent in l1.inventory.keys():
-#        print 'adding producer/consumer for agent: ' + agent
-#        count += 1
-#        ext = str(count)
-#        data_product_name = 'test-stream-' + ext
-#        producer_component_name = 'pro-'+ext
-#        consumer_component_name = 'con-'+ext
-#
-#        producer_config = InstrumentConfiguration(data_product_name, 0, instrument_configuration=100,
-#                                    sleep_even_zero=False,
-#                                    persist_product=False, report_timing=True, timing_rate=5000)
-#        producer = InstrumentSimulator(producer_component_name, None, producer_config)
-#        consumer = DataProductConsumer(consumer_component_name, None, ConsumerConfiguration(data_product_name, log_value=False))
-#
-#        m.send_request(AddComponent(producer), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
-#        m.send_request(AddComponent(consumer), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
-#        m.send_request(StartRequest(), agent_filter=agent_id(agent), component_filter=component_id(consumer_component_name))
-#        m.send_request(StartRequest(), agent_filter=agent_id(agent), component_filter=component_id(producer_component_name))
-#        sleep(2) # need at least a little time to let first component register name or second may fail due to race condition
-#
-#    # log results as they arrive for 5 min then stop traffic
-#    sleep(300)
-#    m.send_request(StopRequest(), component_filter=component_type(InstrumentSimulator))
-#    sleep(5)
+
 if __name__ == "__main__":
     main()

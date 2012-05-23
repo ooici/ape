@@ -1,3 +1,13 @@
+"""
+ape example: ping servers
+
+simple example to create and send request to agents.
+a reply is sent but this example doesn't listen for it.
+to see anything happening, make sure the container is using DEBUG logging for ape messages,
+and watch the container logs.
+
+"""
+
 import gevent.monkey
 
 gevent.monkey.patch_all(aggressive=False)

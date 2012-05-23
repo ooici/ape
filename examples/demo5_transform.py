@@ -1,3 +1,14 @@
+"""
+ape sample: transform
+
+creates a data pathway with two producers, a transform using output of both, and a consumer
+
+the two producers are InstrumentSimulators each producing lists of values.
+the values are the same (0.1) but the length of the lists differ (1 or 5 values).
+the transform adds the values in the list and outputs the sum.
+the consumer prints the values it sees, which should alternate between 0.1 and 0.5.
+"""
+
 import gevent.monkey
 from ape.component.transform import TransformComponent
 from ape.component.transform import Configuration as TransformConfiguration

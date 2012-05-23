@@ -1,3 +1,12 @@
+"""
+ape sample: publish/subscribe
+
+create an InstrumentSimulator component which registers a new data product and creates messages at a specified rate,
+and a DataProductConsumer component that receives these messages and discards (optionally prints) them.
+although the pair of ape components are created on each agent found,
+the actual processes are requested from the system and could be launched in a different container entirely.
+"""
+
 import gevent.monkey
 
 gevent.monkey.patch_all(aggressive=False)

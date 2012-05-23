@@ -18,7 +18,7 @@ from interface.services.dm.itransform_management_service import TransformManagem
 from interface.objects import StreamQuery
 from pyon.ion.granule.granule import build_granule
 import pickle
-from numpy import array
+from numpy import array, ndarray
 
 def identity(input_record_dictionary):
     out = { }
@@ -57,7 +57,7 @@ class TransformComponent(ApeComponent):
         super(TransformComponent,self).__init__(name, agent, configuration)
 
     def _start(self):
-        log.debug('consumer starting')
+        log.debug('transform starting')
 
         # access container resources
         self.pubsub_management = PubsubManagementServiceClient(node=self.agent.container.node)
@@ -180,13 +180,15 @@ class _Transform(TransformDataProcess):
         try:
             input = RecordDictionaryTool.load_from_granule(granule_in)
             output = {}
+#            log.debug('have granule: ' + repr(input))
             ## WARNING! WARNING! this works for internal ape testing,
             ## but is not appropriate for use in project code
             exec self.transform_code
 
-            payload = self.convert_values(output)
-            granule_out = build_granule(data_producer_id='UNUSED', taxonomy=self.get_taxonomy(), record_dictionary=payload)
-            self.publish(granule_out)
+            if output:
+                payload = self.convert_values(output)
+                granule_out = build_granule(data_producer_id='UNUSED', taxonomy=self.get_taxonomy(), record_dictionary=payload)
+                self.publish(granule_out)
         except Exception as ex:
             ## UGLY! i shouldn't have to do this, but otherwise the container silently drops the exception...
             log.debug('exception in transform process', exc_info=True)
@@ -197,6 +199,8 @@ class _Transform(TransformDataProcess):
         for (k,v) in dictionary.iteritems():
             if isinstance(v, tuple) or isinstance(v, list):
                 payload[k] = array(v)
+            elif isinstance(v, ndarray):
+                payload[k] = v
             elif isinstance(v, dict):
                 raise ApeException('not yet able to put dictionary inside another')
             else:

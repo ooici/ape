@@ -1,3 +1,13 @@
+"""
+ape script: inventory
+
+send a request to all agents for their inventory, wait for an accumulate results, and then print them.
+
+initially each agent running will only have one component -- the agent itself.
+so the printout should show a list of all agents in the system,
+and one component in each named 'AGENT'.
+"""
+
 import gevent.monkey
 
 gevent.monkey.patch_all(aggressive=False)
