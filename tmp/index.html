@@ -1,0 +1,14 @@
+<html><head>
+<title></title>
+<script type="text/javascript">
+//<![CDATA[
+window.onload = function() {
+	img = document.getElementById('refreshImage');
+	img.src += "?";
+	setInterval("img.src=img.src.replace(/\\?[0-9]*/, '?'+Math.floor(Math.random()*9999999+1));", 1000);
+}
+//]]>
+</script>
+</head><body>
+<img src=image.png id='refreshImage'>
+</body></html>
