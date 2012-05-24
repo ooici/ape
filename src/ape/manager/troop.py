@@ -256,9 +256,6 @@ class Troop(object):
 
     def start_nodes(self):
         chdir(self.target_directory)
-        print 'launch: ' + self.launch_name
-        print 'running from: ' + self.target_directory
-        print 'contents: ' + repr(listdir(self.target_directory))
         cloudinitd(argv=['boot', 'troop-launch.conf', '-n', self.launch_name])
 
     def stop_nodes(self):
