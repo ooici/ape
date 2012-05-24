@@ -7,7 +7,7 @@ agent-service:
     config:
         typical: maybe   # added to agent definition in all generated deploy.yml (configure ape MQ?)
 
-nodes:
+containers:
     - name: container-with-services
       count: 3
       services: '*'  # all services from r2deploy.yml

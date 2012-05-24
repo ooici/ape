@@ -9,7 +9,7 @@
         config:
             typical: maybe   <-- added to agent definition in all generated deploy.yml (configure ape MQ?)
 
-    nodes:
+    containers:
         - name: container-with-services:
           count: 3
           services: *  <-- all services from r2deploy.yml
@@ -128,7 +128,7 @@ class Troop(object):
 
         self.node_types = []
         agent_services = [self.agent_service]
-        for node in self.configuration['nodes']:
+        for node in self.configuration['containers']:
             service_type = node['services']
             if service_type=='*':
                 self.node_types.append(_NodeTypeDefinition(node['name'], self.services + agent_services, node['count']))
