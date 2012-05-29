@@ -242,4 +242,5 @@ class InstrumentSimulator(ApeComponent):
 
             else:
                 # if not emitting granules, don't do timing either
-                sleep(self.configuration.interval)
+                # and don't allow to sleep for too short a time and hog CPU
+                sleep(min(10,self.configuration.interval))

@@ -124,6 +124,11 @@ class Troop(object):
         self.launch_name = self.configuration['launch-name']
         self.state = CONFIGURED
 
+    def set_name(self, name):
+        if self.state==RUNNING or self.state==CREATED:
+            raise ApeException('unable to reconfigure while troop state is ' + self.state)
+        self.configuration['launch-name']=name
+
     def change_count(self, name, count):
         """ change count of container types with given name """
         if self.state==RUNNING or self.state==CREATED:
