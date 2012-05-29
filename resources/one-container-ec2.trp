@@ -1,0 +1,14 @@
+
+launch-name: ec2launch
+launch-target: ec2
+
+service-definitions: agent-and-services.yml
+agent-service:
+    name: testing_agent  # which entry in r2deploy is ape agent, run on all pycc VMs
+
+# create one container with all services from agent-and-services.yml
+# and two with just the ape agent
+containers:
+    - name: container-with-services
+      count: 1
+      services: '*'
