@@ -1,6 +1,6 @@
 """ manage the launch and shutdown of a collection of pycc containers with agents using cloudinitd
 
-    uses configuration file such as my_test.trp:
+    uses troop configuration file such as my_test.trp:
 
     launch-name: test43    <-- name used by cloudinitd
     launch-target: ec2     <-- or local
@@ -79,11 +79,17 @@ class _NodeTypeDefinition(object):
         return self.services
     def get_count(self):
         return self.count
+    def set_count(self, count):
+        self.count = count
     def __str__(self):
         out = "%s (%d): " % (self.name, self.count)
         for service in self.services:
             out += "%s, " % service['name']
         return out
+
+CREATED='unconfigured'
+CONFIGURED='configured'
+RUNNING='running'
 
 class Troop(object):
     def __init__(self, clobber=False, target=WORK_DIRECTORY, template=TEMPLATE_DIRECTORY):
@@ -93,8 +99,12 @@ class Troop(object):
         self.base_directory = self._get_base_directory()
         self.target_directory = target if isabs(target) else join(self.base_directory, target)
         self.template_directory = template if isabs(template) else join(self.base_directory, template)
+        self.state = CREATED
 
     def configure(self, config):
+        """ use dictionary or yaml file for troop configuration """
+        if self.state==RUNNING:
+            raise ApeException('unable to reconfigure while troop state is ' + self.state)
         if isinstance(config, str):
             filename = config
             if not isabs(filename):
@@ -112,6 +122,37 @@ class Troop(object):
         launch_target = self.configuration['launch-target']
         self.launch_template_file = join(self.template_directory, 'templates', 'troop-on-' + launch_target + '.conf')
         self.launch_name = self.configuration['launch-name']
+        self.state = CONFIGURED
+
+    def set_name(self, name):
+        if self.state==RUNNING or self.state==CREATED:
+            raise ApeException('unable to reconfigure while troop state is ' + self.state)
+        self.configuration['launch-name']=name
+
+    def change_count(self, name, count):
+        """ change count of container types with given name """
+        if self.state==RUNNING or self.state==CREATED:
+            raise ApeException('unable to reconfigure while troop state is ' + self.state)
+
+        # find container description with matching name
+        for node in self.configuration['containers']:
+            if node['name']==name:
+                # determine names of container types created from description
+                if isinstance(node['services'], int):
+                    changed_names = []
+                    index = 1
+                    for start_index in xrange(0,len(self.services),node['services']):
+                        indexed_name = '%s-%d' % (node['name'], index)
+                        changed_names.append(indexed_name)
+                        index += 1
+                else:
+                    changed_names = [name]
+            # then change counts
+            for container in self.node_types:
+                if container.get_name in changed_names:
+                    container.set_count(count)
+
+        raise ApeException('unknown container description: ' + name)
 
     def _get_base_directory(self):
         if 'APE_HOME' in environ:
@@ -154,6 +195,7 @@ class Troop(object):
                 raise ApeException('failed to parse node type %s: services: %s' % (node['name'], repr(service_type)))
 
     def _read_services(self):
+        ''' parse deploy.yml file for service definitions '''
         if self.service_by_name is None:
             # read service definition file (deploy.yml)
             filename = self.configuration['service-definitions']
@@ -185,6 +227,9 @@ class Troop(object):
             self.services.remove(self.agent_service)
 
     def get_container_count(self):
+        """ determine how many pycc containers would be started based on the troop configuration """
+        if self.state==CREATED:
+            log.warn('container count called before troop was configured')
         total=0
         for node_type in self.node_types:
             total += node_type.get_count()
@@ -196,6 +241,7 @@ class Troop(object):
         return '%0' + str(digits) + 'd'
 
     def create_launch_plan(self):
+        """ create appropriate configuration files for cloudinitd launch of troop nodes """
         self._copy_template()
         self._create_run_levels()
 
@@ -255,10 +301,16 @@ class Troop(object):
         # update troop-launch.conf list of run levels
 
     def start_nodes(self):
+        """ invoke cloudinitd to start nodes """
+        if self.state!=CONFIGURED:
+            raise ApeException('cannot start nodes when troop state is ' + self.state)
         chdir(self.target_directory)
         cloudinitd(argv=['boot', 'troop-launch.conf', '-n', self.launch_name])
 
     def stop_nodes(self):
+        """ invoke cloudinitd to stop all nodes """
+        if self.state!=RUNNING:
+            raise ApeException('cannot stop nodes when troop state is ' + self.state)
         chdir(self.target_directory)
         cloudinitd(argv=['terminate', self.launch_name])
 
