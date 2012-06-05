@@ -27,6 +27,7 @@ class AQMPConnector(BaseConnector):
         if host:
             # using ape service broker configuration
             user = self._config('connector', 'username')
+            log.info('using ape broker config host=%s user=%s', host, user)
             if user:
                 passw = self._config('connector', 'password')
                 credentials = PlainCredentials(user, passw)
@@ -37,10 +38,11 @@ class AQMPConnector(BaseConnector):
                 return BlockingConnection(connection_config)
         else:
             # using container broker configuration
-            host = self._config('aqmp', 'host')
-            user = self._config('aqmp', 'username')
+            host = self._config('amqp', 'host')
+            user = self._config('amqp', 'username')
+            log.info('using container broker config host=%s user=%s', host, user)
             if user:
-                passw = self._config('aqmp', 'password')
+                passw = self._config('amqp', 'password')
                 credentials = PlainCredentials(user, passw)
                 connection_config = ConnectionParameters(host=host, credentials=credentials)
                 return BlockingConnection(connection_config)
