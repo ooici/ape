@@ -13,8 +13,7 @@ class ConfigurableAgent(ConnectorDrivenAgent):
         type = self.CFG.get_safe('connector.type')
         if type != 'AQMPConnector':
             raise ApeException('do not know how to use connector type: ' + type)
-        config = self.CFG.get_safe('connector')
-        self.connector = AQMPConnector(config)
+        self.connector = AQMPConnector(self.CFG)
         self.agent_id = self.CFG.get('agent_id') or self.id
         for name in PROPERTY_NAMES:
             value = self.CFG.get(name)

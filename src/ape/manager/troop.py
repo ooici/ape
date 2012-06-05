@@ -59,6 +59,9 @@ from math import log10
 from os import mkdir, chdir, environ, listdir
 from os.path import join, isdir, dirname, isabs
 from cloudinitd.cli.boot import main as cloudinitd
+from cloudinitd.user_api import CloudInitD
+from cloudinitd.exceptions import APIUsageException, ConfigException
+
 
 RESERVED_RUN_LEVELS=9  # container N is started as run level (N+RESERVED_RUN_LEVELS)
 
@@ -90,6 +93,7 @@ class _NodeTypeDefinition(object):
 CREATED='unconfigured'
 CONFIGURED='configured'
 RUNNING='running'
+FAILED='failed'
 
 class Troop(object):
     def __init__(self, clobber=False, target=WORK_DIRECTORY, template=TEMPLATE_DIRECTORY):
@@ -136,17 +140,17 @@ class Troop(object):
 
         # find container description with matching name
         for node in self.configuration['containers']:
+            changed_names = []
             if node['name']==name:
                 # determine names of container types created from description
                 if isinstance(node['services'], int):
-                    changed_names = []
                     index = 1
                     for start_index in xrange(0,len(self.services),node['services']):
                         indexed_name = '%s-%d' % (node['name'], index)
                         changed_names.append(indexed_name)
                         index += 1
                 else:
-                    changed_names = [name]
+                    changed_names.append(name)
             # then change counts
             for container in self.node_types:
                 if container.get_name in changed_names:
@@ -195,7 +199,7 @@ class Troop(object):
                 raise ApeException('failed to parse node type %s: services: %s' % (node['name'], repr(service_type)))
 
     def _read_services(self):
-        ''' parse deploy.yml file for service definitions '''
+        """ parse deploy.yml file for service definitions """
         if self.service_by_name is None:
             # read service definition file (deploy.yml)
             filename = self.configuration['service-definitions']
@@ -242,6 +246,7 @@ class Troop(object):
 
     def create_launch_plan(self):
         """ create appropriate configuration files for cloudinitd launch of troop nodes """
+#        self._check_environment()  #TODO
         self._copy_template()
         self._create_run_levels()
 
@@ -305,12 +310,35 @@ class Troop(object):
         if self.state!=CONFIGURED:
             raise ApeException('cannot start nodes when troop state is ' + self.state)
         chdir(self.target_directory)
-        cloudinitd(argv=['boot', 'troop-launch.conf', '-n', self.launch_name])
+        try:
+            cloudinitd(argv=['boot', 'troop-launch.conf', '-n', self.launch_name])
+            self.state=RUNNING
+        except:
+            self.state=FAILED
 
     def stop_nodes(self):
         """ invoke cloudinitd to stop all nodes """
-        if self.state!=RUNNING:
+        if self.state!=RUNNING and self.state!=FAILED:
             raise ApeException('cannot stop nodes when troop state is ' + self.state)
         chdir(self.target_directory)
         cloudinitd(argv=['terminate', self.launch_name])
+
+    def get_nodes_broker(self):
+        """ interrogate cloudinitd for rabbitmq parameters """
+        vars = {}
+        home = environ['HOME']
+
+        try:
+            cid = CloudInitD(home + '/.cloudinitd', db_name=self.launch_name, terminate=False, boot=False, ready=False)
+        except APIUsageException, e:
+            print "Problem loading records from cloudinit.d: %s" % str(e)
+            raise
+
+        svc_list = cid.get_all_services()
+        for svc in svc_list:
+            if svc.name == 'basenode':
+                vars['broker_hostname'] = svc.get_attr_from_bag("hostname")
+                vars['broker_username'] = svc.get_attr_from_bag("rabbitmq_username")
+                vars['broker_password'] = svc.get_attr_from_bag("rabbitmq_password")
+        return vars
 

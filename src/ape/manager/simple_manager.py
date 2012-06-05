@@ -18,7 +18,7 @@ class _ExecBlocking(Thread):
         self.inbound_channel.start_consuming()
 
 class Listener(object):
-    def on_message(self):
+    def on_message(self, message):
         pass
 
 class InventoryListener(Listener):
@@ -29,10 +29,15 @@ class InventoryListener(Listener):
             self.inventory[message.agent] = message.result
 
 class SimpleManager(object):
-    ''' simple manager that lets you send requests and view results '''
-    def __init__(self):
+    """ simple manager that lets you send requests and view results """
+    def __init__(self, broker_hostname='localhost', broker_username=None, broker_password=None):
+        print '\n\nstarting manager, broker=%s user=%s pass=%s' % (broker_hostname, broker_username, broker_password)
         self.listeners = []
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        if broker_username:
+            credentials = pika.PlainCredentials(broker_username, broker_password)
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=broker_hostname, credentials=credentials))
+        else:
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=broker_hostname))
         self.outbound_channel = self.connection.channel()
         self.outbound_channel.exchange_declare(exchange=outbound_exchange, type='fanout')
 
