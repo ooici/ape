@@ -5,8 +5,6 @@
 
 import gevent.monkey
 from ape.common.messages import agent_id, component_id
-from ape.component.transform import TransformComponent
-from ape.component.transform import Configuration as TransformConfiguration
 from ape.manager.troop import Troop
 from ape.component.instrument_simulator import InstrumentSimulator
 from ape.component.instrument_simulator import Configuration as InstrumentConfiguration
@@ -18,8 +16,7 @@ from pyon.util.log import log
 
 from ape.manager.simple_manager import SimpleManager, InventoryListener, Listener
 from ape.common.requests import InventoryRequest, PerformanceResult, AddComponent, StartRequest, StopRequest
-from time import sleep, time
-from numpy import array, zeros
+from time import sleep
 
 def wait(a):
     raw_input('--- press enter to continue ---')
@@ -48,7 +45,6 @@ def main():
     m.add_listener(p_listener)
 
     try:
-        start_time = time()
         log.info('now starting nodes\n\n-----------------------------------------------') # bracket STDOUT of cloudinitd
         t.start_nodes()
         log.info('-----------------------------------------------\n\n')
@@ -128,6 +124,7 @@ def add_node_traffic(manager, listener, agent, rate, name):
 
     # measure performance
     max_wait=600 # 10min
+    measured_rate=0
     for n in xrange(max_wait/5):
         sleep(5)
         measured_rate = listener.get_node_rate(name + '-producer')

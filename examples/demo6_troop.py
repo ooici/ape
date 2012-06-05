@@ -19,31 +19,28 @@ def main():
     t.configure('resources/three-containers.trp')
     t.create_launch_plan()
     print 'created a launch plan with %d containers' % t.get_container_count()
-
-    l = InventoryListener()
-    m = SimpleManager()
-    m.add_listener(l)
-
-    m.send_request(InventoryRequest())
-    print 'requested inventory -- waiting for reply messages'
-    sleep(5)
-
-    print 'inventory before nodes are started: '
-    show_inventory(l.inventory)
-
     print 'now starting nodes\n\n-----------------------------------------------'
-    t.start_nodes()
 
-    # get inventory -- see what agents we have running
-    m.send_request(InventoryRequest())
-    print '-----------------------------------------------\n\nrequested inventory again -- waiting for reply messages'
-    sleep(5)
+    try:
+        t.start_nodes()
 
-    print 'inventory after nodes have started: '
-    show_inventory(l.inventory)
+        broker_config = t.get_nodes_broker()
+        m = SimpleManager(**broker_config)
 
-    print 'now stopping nodes'
-    t.stop_nodes()
+        l = InventoryListener()
+        m.add_listener(l)
+
+        # get inventory -- see what agents we have running
+        m.send_request(InventoryRequest())
+        print '-----------------------------------------------\n\nrequested inventory -- waiting for reply messages'
+        sleep(30)
+
+        print 'inventory after nodes have started: '
+        show_inventory(l.inventory)
+
+    finally:
+        print 'now stopping nodes'
+        t.stop_nodes()
 
 
 def show_inventory(i):
