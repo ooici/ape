@@ -22,7 +22,7 @@ class AQMPConnector(BaseConnector):
         else:
             return None
 
-    def _get_connection(self, ape_name, amqp_name):
+    def _get_connection(self):
         host = self._config('connector', 'hostname')
         if host:
             # using ape service broker configuration
