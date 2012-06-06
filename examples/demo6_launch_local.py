@@ -25,22 +25,27 @@ def main():
         t.start_nodes()
 
         broker_config = t.get_nodes_broker()
+#        broker_config = { 'broker_hostname': 'ec2-50-17-108-226.compute-1.amazonaws.com',
+#                                    'broker_username': '69B41555-A958-4115-8ED5-3D580B5CF688',
+#                                    'broker_password': '4878E506-875F-41DA-B7F5-B9FC7F904EF5' }
         m = SimpleManager(**broker_config)
 
         l = InventoryListener()
         m.add_listener(l)
 
+        while True:
         # get inventory -- see what agents we have running
-        m.send_request(InventoryRequest())
-        print '-----------------------------------------------\n\nrequested inventory -- waiting for reply messages'
-        sleep(30)
+            m.send_request(InventoryRequest())
+            print '-----------------------------------------------\n\nrequested inventory -- waiting for reply messages'
+            sleep(5)
 
-        print 'inventory after nodes have started: '
-        show_inventory(l.inventory)
+            print 'inventory after nodes have started: '
+            show_inventory(l.inventory)
+            wait(5)
 
     finally:
         print 'now stopping nodes'
-        t.stop_nodes()
+#        t.stop_nodes()
 
 
 def show_inventory(i):

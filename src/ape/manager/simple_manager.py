@@ -1,21 +1,23 @@
 
-import pika
+from pika import PlainCredentials, ConnectionParameters, SelectConnection
 from ape.common.messages import ApeRequestMessage, ApeResultMessage, ALL_AGENTS
 from ape.common.types import ApeRequest, ApeException
 import ape.common.requests
+from ape.apelog import log
 from ape.common.requests import InventoryResult
 from threading import Thread
 from time import sleep
+from pika.reconnection_strategies import SimpleReconnectionStrategy
 
 outbound_exchange='ape-requests'
 inbound_exchange='ape-results'
 
 class _ExecBlocking(Thread):
-    def __init__(self, inbound_channel):
-        self.inbound_channel = inbound_channel
+    def __init__(self, connection):
+        self.connection = connection
         super(_ExecBlocking,self).__init__()
     def run(self):
-        self.inbound_channel.start_consuming()
+        self.connection.ioloop.start()
 
 class Listener(object):
     def on_message(self, message):
@@ -31,28 +33,37 @@ class InventoryListener(Listener):
 class SimpleManager(object):
     """ simple manager that lets you send requests and view results """
     def __init__(self, broker_hostname='localhost', broker_username=None, broker_password=None):
-        print '\n\nstarting manager, broker=%s user=%s pass=%s' % (broker_hostname, broker_username, broker_password)
+        log.debug('starting manager: broker=%s user=%s', broker_hostname, broker_username)
         self.listeners = []
+        self._initializing = True
         if broker_username:
-            credentials = pika.PlainCredentials(broker_username, broker_password)
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=broker_hostname, credentials=credentials))
+            credentials = PlainCredentials(broker_username, broker_password) if broker_username else None
+            self.connection = SelectConnection(ConnectionParameters(host=broker_hostname, credentials=credentials), self._on_connected, reconnection_strategy=SimpleReconnectionStrategy())
         else:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=broker_hostname))
-        self.outbound_channel = self.connection.channel()
-        self.outbound_channel.exchange_declare(exchange=outbound_exchange, type='fanout')
-
-        self.inbound_channel = self.connection.channel()
-        self.inbound_channel.exchange_declare(exchange=inbound_exchange, type='fanout')
-        queue_name = self.inbound_channel.queue_declare(exclusive=True).method.queue
-#        result = self.inbound_channel.queue_declare(exclusive=True)
-#        queue_name = result.method.queue
-        self.inbound_channel.queue_bind(exchange=inbound_exchange, queue=queue_name)
-        self.inbound_channel.basic_consume(self.callback, queue=queue_name, no_ack=True, consumer_tag=inbound_exchange)
-
-        self.thread = _ExecBlocking(self.inbound_channel)
-        self.thread.setDaemon(True)
-        self.thread.start()
-        sleep(5) # give consumer time to start before returning control to client
+            p = ConnectionParameters(host=broker_hostname)
+            s = SimpleReconnectionStrategy()
+            self.connection = SelectConnection(p, on_open_callback=self._on_connected, reconnection_strategy=s)
+        _ExecBlocking(self.connection).start()
+        while self._initializing:
+            sleep(1)
+    def _on_connected(self, connection):
+        self.connection.channel(self._on_outbound_channel)
+    def _on_outbound_channel(self, channel):
+        self.outbound_channel = channel
+        self.outbound_channel.exchange_declare(exchange=outbound_exchange, type='fanout',callback=self._on_outbound_exchange)
+    def _on_outbound_exchange(self, arg):
+        self.connection.channel(self._on_inbound_channel)
+    def _on_inbound_channel(self, channel):
+        self.inbound_channel = channel
+        channel.exchange_declare(exchange=inbound_exchange, type='fanout', callback=self._on_inbound_exchange)
+    def _on_inbound_exchange(self, arg):
+        self.inbound_channel.queue_declare(exclusive=True, callback=self._on_inbound_queue)
+    def _on_inbound_queue(self, queue_declaration):
+        self.queue_name = queue_declaration.method.queue
+        self.inbound_channel.queue_bind(exchange=inbound_exchange, queue=self.queue_name, callback=self._on_queue_bound)
+    def _on_queue_bound(self, arg):
+        self.inbound_channel.basic_consume(self.callback, queue=self.queue_name, no_ack=True, consumer_tag=inbound_exchange)
+        self._initializing = False
 
     def add_listener(self, listener):
         assert isinstance(listener, Listener)
@@ -77,5 +88,5 @@ class SimpleManager(object):
 #        self.outbound_channel.close()
 #        self.inbound_channel.stop_consuming()
 #        self.inbound_channel.close()
-#        self.connection.close()
+        self.connection.close()
         pass

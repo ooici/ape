@@ -3,7 +3,7 @@
   "parameters":{
     "rel":{
       "type":"release",
-      "name":"${name}",
+      "name":"${runlevel}-${name}",
       "version":"0.1",
       "description":"Pyon service deployed by cloudinit.d",
       "ion":"0.0.1",
@@ -46,10 +46,14 @@
           "facility": "local0"
         },
         "file":{
-          "filename": "logs/pyonapp_${name}.log"
+          "filename": "logs/pyonapp_${runlevel}-${name}.log"
         }
       },
       "loggers":{
+        "ape":{
+          "level": "DEBUG",
+          "handlers": ["console", "file", "syslog"]
+        },
         "pyon":{
           "level": "INFO",
           "handlers": ["console", "file", "syslog"]

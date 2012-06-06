@@ -326,6 +326,10 @@ class Troop(object):
 
     def get_nodes_broker(self):
         """ interrogate cloudinitd for rabbitmq parameters """
+
+        if self.state==CREATED:
+            raise ApeException('cannot query cloudinitd before Troop has been configured')
+
         vars = {}
         home = environ['HOME']
 

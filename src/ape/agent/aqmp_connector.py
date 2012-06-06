@@ -38,10 +38,10 @@ class AQMPConnector(BaseConnector):
                 passw = self._config('connector', 'password')
                 credentials = PlainCredentials(user, passw)
                 connection_config = ConnectionParameters(host=host, port=port, credentials=credentials)
-                return SelectConnection(connection_config, on_open_callback=self._on_connected)
+                return SelectConnection(connection_config, on_open_callback=self._on_connected, reconnection_strategy=srs)
             else:
                 connection_config = ConnectionParameters(host=host, port=port)
-                return SelectConnection(connection_config, on_open_callback=self._on_connected)
+                return SelectConnection(connection_config, on_open_callback=self._on_connected, reconnection_strategy=srs)
         else:
             # using container broker configuration
             host = self._config('server', 'amqp', 'host')
@@ -55,7 +55,7 @@ class AQMPConnector(BaseConnector):
                 return SelectConnection(connection_config, self._on_connected, reconnection_strategy=srs)
             else:
                 connection_config = ConnectionParameters(host=host, port=port)
-                return SelectConnection(connection_config, on_open_callback=self._on_connected)
+                return SelectConnection(connection_config, on_open_callback=self._on_connected, reconnection_strategy=srs)
     def _on_connected(self, connection):
         log.debug('_on_connected')
         connection.channel(self._on_inbound_channel_opened)

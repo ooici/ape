@@ -1,0 +1,18 @@
+ORIG=launch-plans/sandbox/lightweight
+APE=ape/resources/launch-plan
+
+cp -rp $ORIG/dtrs-bootstrap/dt-bootstrap/sites $APE/dtrs-bootstrap/dt-bootstrap
+exit
+cp $ORIG/basenode/basenode-chef.sh $APE/basenode/basenode-chef.sh
+cp $ORIG/basenode/deps.conf $APE/basenode/deps.conf
+cp $ORIG/common/deps.conf $APE/common/deps.conf
+cp $ORIG/common/epu-chef.sh $APE/common/epu-chef.sh
+cp $ORIG/dtrs-bootstrap/deps.conf $APE/dtrs-bootstrap/deps.conf
+cp $ORIG/dtrs-bootstrap/dt-bootstrap/dt/eeagent_pyon.yml $APE/dtrs-bootstrap/dt-bootstrap/dt/eeagent_pyon.yml
+cp $ORIG/dtrs-bootstrap/dt-bootstrap/run.sh $APE/dtrs-bootstrap/dt-bootstrap/run.sh
+cp $ORIG/dtrs-bootstrap/dt-bootstrap.tar.gz $APE/dtrs-bootstrap/dt-bootstrap.tar.gz
+cp $ORIG/dtrs-bootstrap/dtrs-bootstrap.conf $APE/dtrs-bootstrap/dtrs-bootstrap.conf
+cp $ORIG/dtrs-bootstrap/dtrs-bootstrap.json $APE/dtrs-bootstrap/dtrs-bootstrap.json
+cp $ORIG/epum/epum.json $APE/epum/epum.json
+cp $ORIG/provisioner/deps.conf $APE/provisioner/deps.conf
+cp $ORIG/provisioner/provisioner.json $APE/provisioner/provisioner.json
