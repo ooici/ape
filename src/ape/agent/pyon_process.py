@@ -24,7 +24,7 @@ class _ExecutionThread(Thread):
         except Exception:
             log.error("agent exception: " + format_exc())
         else:
-            log.debug("agent shutting down")
+            log.debug("agent startup thread complete")
     def kill(self):
         self.join()
 

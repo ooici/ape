@@ -61,7 +61,6 @@ class SimpleManager(object):
     def callback(self, ch, method, properties, body):
         message = ApeResultMessage().unpack(body)
         [ l.on_message(message) for l in self.listeners ]
-        # TODO: implement as a listener
 
     def send_request(self, request, agent_filter=ALL_AGENTS, component_filter=None):
         if isinstance(request, ApeRequestMessage):

@@ -54,6 +54,7 @@ import yaml
 import json
 from string import Template
 from ape.common.types import ApeException
+from ape.manager.simple_manager import SimpleManager
 from pyon.util.log import log
 from math import log10
 from os import mkdir, chdir, environ, listdir
@@ -300,7 +301,7 @@ class Troop(object):
         with open(join(folder, 'run-level.conf'), 'w') as file:
             file.write(runlevel_configuration)
 #        copy(join(self.template_directory, RUNLEVEL_CONFIG_TEMPLATE), folder)
-        container_configuration = container_template.substitute(name=node_type.get_name(), app_json=container_services)
+        container_configuration = container_template.substitute(runlevel=folder_name, name=node_type.get_name(), app_json=container_services)
         with open(join(folder, 'container-config.json'), 'w') as file:
             file.write(container_configuration)
         # update troop-launch.conf list of run levels
@@ -342,3 +343,5 @@ class Troop(object):
                 vars['broker_password'] = svc.get_attr_from_bag("rabbitmq_password")
         return vars
 
+    def get_manager(self):
+        return SimpleManager(**self.get_nodes_broker())

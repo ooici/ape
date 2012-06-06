@@ -44,6 +44,7 @@ class ConnectorDrivenAgent(PyonApeAgent,ApeComponent):
     def manage(self):
         ''' start listening to endpoint for new messages from manager '''
         self.connector.start_communication()
+
     def stop_agent(self):
         ''' close endpoints '''
         self.connector.stop_communication()
