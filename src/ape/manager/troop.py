@@ -152,10 +152,11 @@ class Troop(object):
                         index += 1
                 else:
                     changed_names.append(name)
-            # then change counts
-            for container in self.node_types:
-                if container.get_name in changed_names:
-                    container.set_count(count)
+                # then change counts
+                for container in self.node_types:
+                    if container.get_name in changed_names:
+                        container.set_count(count)
+                return
 
         raise ApeException('unknown container description: ' + name)
 
