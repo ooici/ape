@@ -32,7 +32,7 @@ class InventoryListener(Listener):
 
 class SimpleManager(object):
     """ simple manager that lets you send requests and view results """
-    def __init__(self, broker_hostname='localhost', broker_username=None, broker_password=None):
+    def __init__(self, broker_hostname='localhost', broker_username='guest', broker_password='guest'):
         log.debug('starting manager: broker=%s user=%s', broker_hostname, broker_username)
         self.listeners = []
         self._initializing = True

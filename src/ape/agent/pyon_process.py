@@ -74,7 +74,7 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
         try:
             component.perform_action(request)
         except Exception as ex:
-            log.error('request failed: ' + str(request) + '\nexception: ' + str(ex) + '\nstack trace: ' + format_exc())
+            log.error('request failed: ' + str(request), exc_info=True)
 
     def perform_action(self, request):
         if isinstance(request, PingRequest):
