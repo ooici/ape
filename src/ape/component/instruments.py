@@ -75,7 +75,7 @@ class SimpleInstrument(InstrumentType):
         return granule
 
     def get_granule_NEW(self, producer_id='UNUSED', time=None, **_):
-        payload = RecordDictionaryTool(self.tax, length=self.message_size)
+        payload = RecordDictionaryTool(self.tax)
         lat,lon,_ = self.get_location(time)
         value = self.get_value(time)
         payload['value'] = array([value]*self.message_size)
