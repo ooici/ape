@@ -3,7 +3,7 @@
 from ape.agent.aqmp_connector import AQMPConnector
 from ape.agent.connector_agent import ConnectorDrivenAgent
 from ape.common.types import ApeException
-from ape.component.instrument_simulator import InstrumentSimulator
+from pyon.core import bootstrap
 
 PROPERTY_NAMES = ('role')
 
@@ -13,7 +13,10 @@ class ConfigurableAgent(ConnectorDrivenAgent):
         type = self.CFG.get_safe('connector.type')
         if type != 'AQMPConnector':
             raise ApeException('do not know how to use connector type: ' + type)
-        self.connector = AQMPConnector(self.CFG)
+        config = {}
+        config.update(bootstrap.CFG)
+        config.update(self.CFG)
+        self.connector = AQMPConnector(config)
         self.agent_id = self.CFG.get('agent_id') or self.id
         for name in PROPERTY_NAMES:
             value = self.CFG.get(name)
