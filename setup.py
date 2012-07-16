@@ -3,7 +3,7 @@ from distutils.core import setup
 package_dir = {'ape': 'src/ape'}
 
 setup(name='ape',
-    version='2012.5.22',
+    version='2012.7.16',
     author='Jonathan Newbrough',
     author_email='jonathan.newbrough@gyregroup.com',
     url='https://github.com/ooici/ape',
