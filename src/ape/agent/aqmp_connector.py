@@ -90,7 +90,8 @@ class AQMPConnector(BaseConnector):
         self.connection.ioloop.start()
 
     def stop_communication(self):
-        self.in_channel.stop_consuming()
+        log.debug('stop_communication')
+        self.in_channel.close()
         self.connection.close()
 
     def send(self, result_message):

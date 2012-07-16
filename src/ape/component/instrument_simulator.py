@@ -54,7 +54,7 @@ class InstrumentSimulator(ApeComponent):
         self.imsclient = InstrumentManagementServiceClient(node=self.agent.container.node)
         self.damsclient = DataAcquisitionManagementServiceClient(node=self.agent.container.node)
         self.data_product_client = DataProductManagementServiceClient(node=self.agent.container.node)
-        self.stream_publisher_registrar = StreamPublisherRegistrar(process=self.agent,node=self.agent.container.node)
+        self.stream_publisher_registrar = StreamPublisherRegistrar(process=self.agent,container=self.agent.container)
 
         # add appropriate entries to the pycc registry
         if self.configuration.easy_registration:
