@@ -33,7 +33,7 @@ class InventoryListener(Listener):
 class SimpleManager(object):
     """ simple manager that lets you send requests and view results """
     def __init__(self, broker_hostname='localhost', broker_username='guest', broker_password='guest'):
-        log.debug('starting manager: broker=%s user=%s', broker_hostname, broker_username)
+        print 'starting manager: broker=%s user=%s'%(broker_hostname, broker_username)
         self.listeners = []
         self._initializing = True
         if broker_username:
@@ -47,22 +47,30 @@ class SimpleManager(object):
         while self._initializing:
             sleep(1)
     def _on_connected(self, connection):
+        print ('connected to broker')
         self.connection.channel(self._on_outbound_channel)
     def _on_outbound_channel(self, channel):
+        print ('have outbound channel')
         self.outbound_channel = channel
         self.outbound_channel.exchange_declare(exchange=outbound_exchange, type='fanout',callback=self._on_outbound_exchange)
     def _on_outbound_exchange(self, arg):
+        print ('have outbound exchange')
         self.connection.channel(self._on_inbound_channel)
     def _on_inbound_channel(self, channel):
+        print ('have inbound channel')
         self.inbound_channel = channel
         channel.exchange_declare(exchange=inbound_exchange, type='fanout', callback=self._on_inbound_exchange)
     def _on_inbound_exchange(self, arg):
+        print ('have inbound exchange')
         self.inbound_channel.queue_declare(exclusive=True, callback=self._on_inbound_queue)
     def _on_inbound_queue(self, queue_declaration):
+        print ('have inbound queue')
         self.queue_name = queue_declaration.method.queue
         self.inbound_channel.queue_bind(exchange=inbound_exchange, queue=self.queue_name, callback=self._on_queue_bound)
     def _on_queue_bound(self, arg):
+        print ('starting connection')
         self.inbound_channel.basic_consume(self.callback, queue=self.queue_name, no_ack=True, consumer_tag=inbound_exchange)
+        print ('connection is started')
         self._initializing = False
 
     def add_listener(self, listener):

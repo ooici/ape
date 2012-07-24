@@ -2,6 +2,7 @@
 
     NOTE: implementing subclass is expected to set PyonApeAgent.agent_id to a system-wide unique string
 '''
+import traceback
 
 from ape.common.types import BaseApeAgent
 from ape.common.requests import PingRequest, PingResult, AddComponent, InventoryResult, InventoryRequest
@@ -74,7 +75,8 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
         try:
             component.perform_action(request)
         except Exception as ex:
-            log.error('request failed: ' + str(request), exc_info=True)
+            log.error('request failed: ' + str(request) + ' ' + str(ex), exc_info=True)
+            log.error('stack: ' + traceback.format_exc())
 
     def perform_action(self, request):
         if isinstance(request, PingRequest):

@@ -48,7 +48,7 @@
         APE/launch-plan/templates/troop-ec2.conf     <-- template for listing of run levels used by cloudinitd
 """
 
-from shutil import copytree, rmtree
+from shutil import copytree, rmtree, copy
 
 import yaml
 import json
@@ -62,7 +62,6 @@ from os.path import join, isdir, dirname, isabs
 from cloudinitd.cli.boot import main as cloudinitd
 from cloudinitd.user_api import CloudInitD
 from cloudinitd.exceptions import APIUsageException, ConfigException
-
 
 RESERVED_RUN_LEVELS=9  # container N is started as run level (N+RESERVED_RUN_LEVELS)
 
@@ -85,6 +84,8 @@ class _NodeTypeDefinition(object):
         return self.count
     def set_count(self, count):
         self.count = count
+    def __repr__(self):
+        return self.__str__()
     def __str__(self):
         out = "%s (%d): " % (self.name, self.count)
         for service in self.services:
@@ -97,7 +98,7 @@ RUNNING='running'
 FAILED='failed'
 
 class Troop(object):
-    def __init__(self, clobber=False, target=WORK_DIRECTORY, template=TEMPLATE_DIRECTORY):
+    def __init__(self, clobber=False, target=WORK_DIRECTORY, template=TEMPLATE_DIRECTORY, weather='sunny'):
         self.configuration = { }
         self.service_by_name = None
         self.clobber = clobber
@@ -105,6 +106,7 @@ class Troop(object):
         self.target_directory = target if isabs(target) else join(self.base_directory, target)
         self.template_directory = template if isabs(template) else join(self.base_directory, template)
         self.state = CREATED
+        self.weather = weather
 
     def configure(self, config):
         """ use dictionary or yaml file for troop configuration """
@@ -150,11 +152,13 @@ class Troop(object):
                         indexed_name = '%s-%d' % (node['name'], index)
                         changed_names.append(indexed_name)
                         index += 1
+                        print 'changing name %s' % indexed_name
                 else:
                     changed_names.append(name)
+                    print 'changing name %s' % name
                 # then change counts
                 for container in self.node_types:
-                    if container.get_name in changed_names:
+                    if container.get_name() in changed_names:
                         container.set_count(count)
                 return
 
@@ -208,8 +212,8 @@ class Troop(object):
             if not isabs(filename):
                 filename = join(self.config_directory, filename)
             with open(filename) as file:
-                deploy_config = yaml.load(file)
-            self.services = deploy_config['apps']
+                self._deploy_config = yaml.load(file)
+            self.services = self._deploy_config['apps']
 
             # create name-->service mapping
             self.service_by_name = {}
@@ -275,9 +279,9 @@ class Troop(object):
         level_pattern = 'level' + self._runlevel_formatting_pattern() + ': %s/run-level.conf\n'
         for node_type in self.node_types:
             for repeats in xrange(node_type.get_count()):
-                log.debug("creating run level %d: node type %s" % (container_count, node_type.get_name()))
+                log.debug("creating run level for container %d: node type %s" % (container_count, node_type.get_name()))
                 folder_name = folder_pattern % container_count
-                self._write_runlevel_configuration(folder_name, runlevel_template, node_type, container_template)
+                self._write_runlevel_configuration(folder_name, runlevel_template, node_type, container_template, container_count==1)
                 run_level_descriptions += level_pattern % (container_count + RESERVED_RUN_LEVELS, folder_name)
                 container_count += 1
 
@@ -287,66 +291,86 @@ class Troop(object):
         with open(join(self.target_directory, 'troop-launch.conf'), 'w') as file:
             file.write(launch_contents)
 
-    def _write_runlevel_configuration(self, folder_name, runlevel_template, node_type, container_template):
+    def _write_runlevel_configuration(self, folder_name, runlevel_template, node_type, container_template, bootstrap):
         # create run level folder
         folder = join(self.target_directory, folder_name)
         mkdir(folder)
         # create JSON description of services
-        container_services = ''
+        services_as_json = ''
+        services_as_yaml = []
         for service in node_type.get_services():
-            if container_services:
-                container_services += ','
-            container_services += json.dumps(service, indent=16)
+            if services_as_json:
+                services_as_json += ','
+            services_as_json += json.dumps(service, indent=16)
+            services_as_yaml.append(service)
         # substitute into templates and save files with appropriate names
         runlevel_configuration = runlevel_template.substitute(name=folder_name)
         with open(join(folder, 'run-level.conf'), 'w') as file:
             file.write(runlevel_configuration)
-#        copy(join(self.template_directory, RUNLEVEL_CONFIG_TEMPLATE), folder)
-        container_configuration = container_template.substitute(runlevel=folder_name, name=node_type.get_name(), app_json=container_services)
+        container_configuration = container_template.substitute(runlevel=folder_name, name=node_type.get_name(), app_json=services_as_json)
         with open(join(folder, 'container-config.json'), 'w') as file:
             file.write(container_configuration)
-        # update troop-launch.conf list of run levels
+        # write traditional deploy.yml
+        data = dict(self._deploy_config)
+        data['apps'] = services_as_yaml
+        with open(join(folder, 'deploy.yml'), 'w') as file:
+            yaml.dump(data, stream=file)
+        config = 'pyon-bootstrap.yml' if bootstrap else 'pyon.yml'
+        copy(join(self.template_directory, 'templates', config), join(folder, 'pyon.yml'))
+        copy(join(self.template_directory, 'templates', "logging.yml"), folder)
 
-    def start_nodes(self):
-        """ invoke cloudinitd to start nodes """
-        if self.state!=CONFIGURED:
-            raise ApeException('cannot start nodes when troop state is ' + self.state)
-        chdir(self.target_directory)
-        try:
-            cloudinitd(argv=['boot', 'troop-launch.conf', '-n', self.launch_name])
-            self.state=RUNNING
-        except:
-            self.state=FAILED
 
-    def stop_nodes(self):
-        """ invoke cloudinitd to stop all nodes """
-        if self.state!=RUNNING and self.state!=FAILED:
-            raise ApeException('cannot stop nodes when troop state is ' + self.state)
-        chdir(self.target_directory)
-        cloudinitd(argv=['terminate', self.launch_name])
-
-    def get_nodes_broker(self):
-        """ interrogate cloudinitd for rabbitmq parameters """
-
-        if self.state==CREATED:
-            raise ApeException('cannot query cloudinitd before Troop has been configured')
-
-        vars = {}
-        home = environ['HOME']
-
-        try:
-            cid = CloudInitD(home + '/.cloudinitd', db_name=self.launch_name, terminate=False, boot=False, ready=False)
-        except APIUsageException, e:
-            print "Problem loading records from cloudinit.d: %s" % str(e)
-            raise
-
-        svc_list = cid.get_all_services()
-        for svc in svc_list:
-            if svc.name == 'basenode':
-                vars['broker_hostname'] = svc.get_attr_from_bag("hostname")
-                vars['broker_username'] = svc.get_attr_from_bag("rabbitmq_username")
-                vars['broker_password'] = svc.get_attr_from_bag("rabbitmq_password")
-        return vars
+#    def start_nodes(self):
+#        if self.weather == 'cloudy':
+#            self._start_nodes_cloudinitd()
+#        elif self.weather == 'sunny':
+#            self._start_nodes_ssh()
+#        else:
+#            raise ApeException("I'm not prepared for %s weather"%self.weather)
+#
+#    def _start_nodes_cloudinitd(self):
+#        """ invoke cloudinitd to start nodes """
+#        if self.state!=CONFIGURED:
+#            raise ApeException('cannot start nodes when troop state is ' + self.state)
+#        chdir(self.target_directory)
+#        try:
+#            cloudinitd(argv=['boot', 'troop-launch.conf', '-n', self.launch_name])
+#            self.state=RUNNING
+#        except:
+#            self.state=FAILED
+#
+#    def _start_nodes_ssh(self):
+#        pass
+#
+#    def stop_nodes(self):
+#        """ invoke cloudinitd to stop all nodes """
+#        if self.state!=RUNNING and self.state!=FAILED:
+#            raise ApeException('cannot stop nodes when troop state is ' + self.state)
+#        chdir(self.target_directory)
+#        cloudinitd(argv=['terminate', self.launch_name])
+#
+#    def get_nodes_broker(self):
+#        """ interrogate cloudinitd for rabbitmq parameters """
+#
+#        if self.state==CREATED:
+#            raise ApeException('cannot query cloudinitd before Troop has been configured')
+#
+#        vars = {}
+#        home = environ['HOME']
+#
+#        try:
+#            cid = CloudInitD(home + '/.cloudinitd', db_name=self.launch_name, terminate=False, boot=False, ready=False)
+#        except APIUsageException, e:
+#            log.error("Problem loading records from cloudinit.d: %s", exc_info=True)
+#            raise
+#
+#        svc_list = cid.get_all_services()
+#        for svc in svc_list:
+#            if svc.name == 'basenode':
+#                vars['broker_hostname'] = svc.get_attr_from_bag("hostname")
+#                vars['broker_username'] = svc.get_attr_from_bag("rabbitmq_username")
+#                vars['broker_password'] = svc.get_attr_from_bag("rabbitmq_password")
+#        return vars
 
     def get_manager(self):
         return SimpleManager(**self.get_nodes_broker())
