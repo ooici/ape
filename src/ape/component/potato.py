@@ -49,8 +49,8 @@ class Potato(ApeComponent):
 
     def perform_action(self, request):
         if isinstance(request, StartRequest):
-            self.thread.set_enabled(True)
             self.reporter.set_enabled(True)
+            self.thread.set_enabled(True)
         elif isinstance(request, StopRequest):
             self.reporter.set_enabled(False)
             self.thread.set_enabled(False)
