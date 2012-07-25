@@ -37,10 +37,10 @@ class PerformOneCycle(ApeRequest): pass
 
 class Potato(ApeComponent):
     def _start(self):
-        self.thread = _OperationThread(self.configuration, self.agent.container)
-        self.thread.start()
         self.reporter = _ReportingThread(self.configuration, self, self.thread)
         self.reporter.start()
+        self.thread = _OperationThread(self.configuration, self.agent.container,self.reporter)
+        self.thread.start()
 
     def _stop(self):
         self.reporter.shutdown()
@@ -69,14 +69,14 @@ def random_string(length):
     return ''.join(random.choice(CHARS) for x in range(length))
 
 class _OperationThread(Thread):
-    def __init__(self,config, container):
+    def __init__(self,config, container, reporter):
         super(_OperationThread,self).__init__()
         self.config = config
         self.container = container
         self.enabled = False
         self.shutdown = False
         self.documents = []
-
+        self.reporter = reporter
         host = CFG.server.couchdb.host
         port = CFG.server.couchdb.port
         username = CFG.server.couchdb.username
@@ -104,6 +104,8 @@ class _OperationThread(Thread):
         if is_enabled:
             self.reset_metrics()
             self.read_all_docs()
+            self.reporter.report_status()
+            self.reset_metrics()
         self.enabled = is_enabled
     def shutdown(self):
         self.shutdown = True
