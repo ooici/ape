@@ -63,7 +63,7 @@ class Potato(ApeComponent):
             self.reporter.report_status()
         else:
             raise ApeException('couch potato does not know how to: ' + str(request))
-        
+
     def get_report(self):
         return self.thread.get_report()
 
@@ -105,8 +105,10 @@ class _OperationThread(Thread):
         self.db = self.server[config.database]
     def set_enabled(self, is_enabled):
         if is_enabled:
+            log.debug('reading all doc ids from db')
             self.reset_metrics()
             self.read_all_docs()
+            log.debug('reading %d doc ids', len(self.documents))
             self.reporter.report_status()
             self.reset_metrics()
         self.enabled = is_enabled
