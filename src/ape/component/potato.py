@@ -37,7 +37,7 @@ class PerformOneCycle(ApeRequest): pass
 
 class Potato(ApeComponent):
     def _start(self):
-        self.reporter = _ReportingThread(self.configuration, self, self.thread)
+        self.reporter = _ReportingThread(self.configuration, self)
         self.reporter.start()
         self.thread = _OperationThread(self.configuration, self.agent.container,self.reporter)
         self.thread.start()
@@ -63,6 +63,9 @@ class Potato(ApeComponent):
             self.reporter.report_status()
         else:
             raise ApeException('couch potato does not know how to: ' + str(request))
+        
+    def get_report(self):
+        return self.thread.get_report()
 
 CHARS=string.ascii_uppercase + string.digits
 def random_string(length):
@@ -186,11 +189,10 @@ class _OperationThread(Thread):
                  'delete': self.delete_operations }
 
 class _ReportingThread(Thread):
-    def __init__(self, config, component, target):
+    def __init__(self, config, component):
         super(_ReportingThread,self).__init__()
         self.config = config
         self.component = component
-        self.target = target
         self.shutdown = False
         self.enabled = False
 
@@ -208,6 +210,6 @@ class _ReportingThread(Thread):
                 time.sleep(max(1,self.config.sleep_between_reports))
 
     def report_status(self):
-        report = self.target.get_report()
+        report = self.component.get_report()
         message = PerformanceResult(report)
         self.component.report(message)
