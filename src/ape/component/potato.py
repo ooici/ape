@@ -20,6 +20,7 @@ class Configuration(object):
     sleep_between_operations = 0
     sleep_between_cycles = 0
     sleep_between_reports = 30
+    threads = 4
     # operations per cycle
     read_count = 85
     create_count = 10
@@ -33,53 +34,82 @@ class Configuration(object):
     update_keys = 3
 
 class ReadAllDocs(ApeRequest): pass
-class PerformOneCycle(ApeRequest): pass
+class PerformOneIteration(ApeRequest): pass
 
 class Potato(ApeComponent):
     def _start(self):
-        self.reporter = _ReportingThread(self.configuration, self)
+        self.threads_enabled = False
+        self.threads_shutdown = False
+        self.reporter = _ReportingThread(self)
         self.reporter.start()
-        self.thread = _OperationThread(self.configuration, self.agent.container,self.reporter)
-        self.thread.start()
+        self.threads = []
+        if self.configuration.id_salt is None:
+            ids = RandomIDFactory()
+        else:
+            ids = SaltedTimeIDFactory()
+            ids._salt = self.configuration.id_salt
+
+        for x in xrange(self.configuration.threads):
+            thread = _OperationThread(self, ids)
+            thread.start()
+            self.threads.append(thread)
+        self.documents = []
 
     def _stop(self):
-        self.reporter.shutdown()
-        self.thread.shutdown()
-        self.thread = None
+        self.threads_enabled = False
+        self.threads_shutdown = True
 
     def perform_action(self, request):
         if isinstance(request, StartRequest):
-            self.reporter.set_enabled(True)
-            self.thread.set_enabled(True)
+            self.reconfigure()
+            self.reset_metrics()
+            self.threads_enabled = True
         elif isinstance(request, StopRequest):
-            self.reporter.set_enabled(False)
-            self.thread.set_enabled(False)
+            self.threads_enabled = False
+            for t in self.threads:
+                t.db = None
         elif isinstance(request, ChangeConfiguration):
-            self.thread.set_config(request.configuration)
+            self.configuration = request.configuration
+            self.reconfigure()
         elif isinstance(request, ReadAllDocs):
-            self.thread.read_all_docs(True)
-        elif isinstance(request, PerformOneCycle):
-            self.thread.perform_iteration()
-            self.reporter.report_status()
+            self.read_all_docs()
+        elif isinstance(request, PerformOneIteration):
+            self.threads[0].perform_iteration()
         else:
             raise ApeException('couch potato does not know how to: ' + str(request))
 
+    def read_all_docs(self):
+        self.documents = self.threads[0].read_all_docs()
+    def reconfigure(self):
+        for t in self.threads:
+            t.set_config(self.configuration)
+        self.read_all_docs()
+    def reset_metrics(self):
+        for t in self.threads:
+            t.reset_metrics()
     def get_report(self):
-        return self.thread.get_report()
+        out = {'create':0, 'read':0, 'update':0, 'delete':0 }
+        sum_elapsed = count = 0
+        for t in self.threads:
+            report = t.get_report()
+            sum_elapsed += report['elapsed']
+            count+=1
+            for key in 'create', 'read', 'update', 'delete':
+                out[key] += report[key]
+        out['elapsed'] = sum_elapsed/count
+        out['docs'] = len(self.documents)
+        return out
 
 CHARS=string.ascii_uppercase + string.digits
 def random_string(length):
     return ''.join(random.choice(CHARS) for x in range(length))
 
 class _OperationThread(Thread):
-    def __init__(self,config, container, reporter):
+    def __init__(self, component, ids):
         super(_OperationThread,self).__init__()
-        self.config = config
-        self.container = container
-        self.enabled = False
-        self.shutdown = False
-        self.documents = []
-        self.reporter = reporter
+        self.component = component
+        self.config = component.configuration
+        self.container = component.agent.container
         host = CFG.server.couchdb.host
         port = CFG.server.couchdb.port
         username = CFG.server.couchdb.username
@@ -93,35 +123,45 @@ class _OperationThread(Thread):
             self.db = self.server[self.config.database]
         else:
             self.db = self.server.create(self.config.database)
-        if config.id_salt is None:
-            self.ids = RandomIDFactory()
-        else:
-            self.ids = SaltedTimeIDFactory()
-            self.ids._salt = config.id_salt
+        self.ids = ids
         self.reset_metrics()
 
     def set_config(self, config):
         self.config = config
         self.db = self.server[config.database]
-    def set_enabled(self, is_enabled):
-        if is_enabled:
-            log.debug('reading all doc ids from db')
-            self.reset_metrics()
-            self.read_all_docs()
-            log.debug('reading %d doc ids', len(self.documents))
-            self.reporter.report_status()
-            self.reset_metrics()
-        self.enabled = is_enabled
-    def shutdown(self):
-        self.shutdown = True
-        self.db = None # cause operations to throw exception, exit cycle faster
 
     def read_all_docs(self):
-        rows = self.db.view("_all_docs", include_docs=False)
-        self.documents = [ row.id for row in rows ]
+        docs_each_pass=10001 # +1 b/c will have to skip first doc on all except first read
+        documents = []
+        not_first_pass = False
+        more_to_read = True
+        last_id = None
+        while more_to_read:
+            try:
+                if not_first_pass:
+                    # begin at last doc returned in last read
+                    results = self.db.view("_all_docs", include_docs=False, limit=docs_each_pass, startkey_docid=last_id)
+                    rows = results.rows
+                else:
+                    results = self.db.view("_all_docs", include_docs=False, limit=docs_each_pass-1)
+                    rows = results.rows
+            except:
+                log.warn('exception reading all docs (done?)', exc_info=True)
+                break
+            if len(rows)<docs_each_pass:
+                more_to_read = False
+
+            if not_first_pass:
+                rows = rows[1:]
+            for row in rows:
+                last_id = row.id
+                documents.append(last_id)
+            not_first_pass = True
+        log.debug('read total %d ids', len(documents))
+        return documents
 
     def read_doc(self):
-        id = random.choice(self.documents)
+        id = random.choice(self.component.documents)
         return self.db.get(id)
     def create_doc(self):
         doc = { '_id': self.ids.create_id() }
@@ -142,8 +182,8 @@ class _OperationThread(Thread):
         self.db.delete(doc)
 
     def run(self):
-        while not self.shutdown:
-            if self.enabled:
+        while not self.component.threads_shutdown:
+            if self.component.threads_enabled:
                 self.perform_iteration()
                 time.sleep(self.config.sleep_between_cycles)
             else:
@@ -170,7 +210,7 @@ class _OperationThread(Thread):
                 else:
                     raise ApeException('this should never happen: ' + repr(c))
             except Exception:
-                if self.shutdown:
+                if self.component.threads_shutdown:
                     return
                 log.info('%s operation failed: %s' % (c[0], traceback.format_exc()))
             time.sleep(self.config.sleep_between_operations)
@@ -191,23 +231,18 @@ class _OperationThread(Thread):
                  'delete': self.delete_operations }
 
 class _ReportingThread(Thread):
-    def __init__(self, config, component):
+    def __init__(self, component):
         super(_ReportingThread,self).__init__()
-        self.config = config
+        self.config = component.configuration
         self.component = component
-        self.shutdown = False
-        self.enabled = False
-
-    def set_enabled(self, is_enabled):
-        self.enabled = is_enabled
-    def shutdown(self):
-        self.shutdown = True
 
     def run(self):
-        while not self.shutdown:
-            if self.enabled:
+        while not self.component.threads_shutdown:
+            if self.component.threads_enabled:
                 time.sleep(self.config.sleep_between_reports)
-                self.report_status()
+                # check again in case was disabled while sleeping
+                if self.component.threads_enabled:
+                    self.report_status()
             else:
                 time.sleep(max(1,self.config.sleep_between_reports))
 

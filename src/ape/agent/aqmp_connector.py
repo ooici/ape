@@ -86,8 +86,11 @@ class AQMPConnector(BaseConnector):
 
     def start_communication(self):
         log.debug('start_communication')
-        self.connection = self._start_connection()
-        self.connection.ioloop.start()
+        try:
+            self.connection = self._start_connection()
+            self.connection.ioloop.start()
+        except Exception,e:
+            log.error('exception in communication thread: %s', str(e), exc_info=True)
 
     def stop_communication(self):
         log.debug('stop_communication')
