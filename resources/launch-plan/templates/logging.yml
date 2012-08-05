@@ -1,0 +1,130 @@
+# Configuration file for setting log levels.
+# To define local overrides, add a file "logging.local.yml"
+
+# Required.  Do not touch or alter.
+version: 1
+
+# Definition of the output format for the handlers.
+#
+# Users should generally not touch this section.
+formatters:
+  brief:
+    format: '%(asctime)s %(levelname)-8s %(name)-15s %(message)s'
+  default:
+    format: '%(asctime)s %(levelname)-8s %(threadName)s %(name)-15s:%(lineno)d %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  rpc-stack:
+    (): 'pyon.util.log.StackFormatter'
+    format: '%(asctime)s %(levelname)-8s %(threadName)s %(name)-15s:%(lineno)d %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+# Definition of the output handlers.  In this case, we've defined
+# two handlers.  One to display basic output to stdout.  Another
+# to display more detailed info in a log file.
+#
+# Users should generally not touch this section.
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: brief
+    level: DEBUG
+    stream: ext://sys.stdout
+  file:
+    class: logging.handlers.RotatingFileHandler
+    formatter: default
+#    formatter: rpc-stack
+    level: DEBUG
+    filename: logs/logfile.txt
+#    maxBytes: 1024000
+#    backupCount: 3
+#  syslog:
+    # Use either the default built in syslog handler
+#    class: logging.handlers.SysLogHandler
+#    formatter: brief
+#    level: DEBUG
+#    address: /var/run/syslog    # Mac OS X syslog endpoint
+    #
+    # Or the syslog handler extended by us to handle the situation
+    # the default handler drops log records that exceed network MTU
+#    class: pyon.util.log.Pyon_SysLogHandler
+#    formatter: brief
+#    level: DEBUG
+#    address: /var/run/syslog    # Mac OS X syslog endpoint
+#    MTU: 1400                   # log record max size before partitioning
+
+# Section for defining logger log levels.  Loggers
+# are defined using dot notation.
+#
+# Examples:
+#   Enable DEBUG level for the pyon.datastore package
+#   and all classes subordinate to that package.
+#
+#   pyon.datastore:
+#     handlers: []
+#     level: DEBUG
+#
+#   Enable INFO level for the module
+#   pyon.datastore.couchchdb.couchdb_datastore
+#
+loggers:
+  pyon:
+    handlers: [file]
+    level: INFO
+
+  prototype:
+    handlers: [file]
+    level: INFO
+
+  ion:
+    handlers: [file]
+    level: INFO
+
+  examples:
+    handlers: [file]
+    level: INFO
+
+  prototype:
+    handlers: [file]
+    level: INFO
+
+  nose:
+    handlers: [file]
+    level: INFO
+
+  ape:
+    handlers: [file]
+    level: DEBUG
+
+  mi:
+    handlers: [file]
+    level: DEBUG
+
+  # disable especially chatty modules
+  pyon.datastore.couchdb.couchdb_datastore:
+    handlers: [file]
+    level: ERROR
+
+  ape.component.instrument_simulator:
+    handlers: [file]
+    level: INFO
+
+  pyon.ion.exchange:
+    handlers: [file]
+    level: ERROR
+
+  pyon.net.endpoint:
+    handlers: [file]
+    level: ERROR
+
+  pyon.event.event:
+    handlers: [file]
+    level: ERROR
+
+  pika:
+    handlers: [file]
+    level: INFO
+
+
+  ():
+    handlers: [file]
+    level: INFO

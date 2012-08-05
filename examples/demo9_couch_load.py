@@ -14,7 +14,7 @@ gevent.monkey.patch_all(aggressive=False)
 
 from ape.manager.simple_manager import SimpleManager, InventoryListener, Listener
 from ape.common.requests import PingRequest, AddComponent, StartRequest, InventoryRequest, StopRequest, PerformanceResult, ChangeConfiguration
-from ape.component.potato import Potato, PerformOneCycle
+from ape.component.potato import Potato, PerformOneIteration
 from ape.component.potato import Configuration as PotatoConfiguration
 from ape.common.messages import  component_id, agent_id, component_type
 from time import sleep
@@ -60,7 +60,8 @@ def main():
     components = []
     initial_config = PotatoConfiguration()
     initial_config.read_count = initial_config.update_count = initial_config.delete_count = 0
-    initial_config.create_count = 10000
+    initial_config.create_count = 1000
+    initial_config.threads = 1
     for agent in l1.inventory.keys():
         print 'adding couch potato for agent: ' + agent
         component_name = 'chip-'+agent
@@ -68,14 +69,15 @@ def main():
         component = Potato(component_name, None, initial_config)
         m.send_request(AddComponent(component), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
         sleep(2) # need at least a little time to let first component register name or second may fail due to race condition
-        m.send_request(PerformOneCycle(), agent_filter=agent_id(agent), component_filter=component_id(component_name))
+        m.send_request(PerformOneIteration(), agent_filter=agent_id(agent), component_filter=component_id(component_name))
 
-    while len(l2.latest_data)<len(components):
-        sleep(1)
+#    while len(l2.latest_data)<len(components):
+#        sleep(1)
 
     print 'initialization ops/sec: %f create, %f read, %f update, %f delete' % l2.get_rates()
 
     cycle_config = PotatoConfiguration()
+    cycle_config.threads=1
     for component_name in components:
         print 'starting db operations on: ' + component_name
         m.send_request(ChangeConfiguration(cycle_config), component_filter=component_id(component_name))

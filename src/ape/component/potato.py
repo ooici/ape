@@ -26,6 +26,8 @@ class Configuration(object):
     create_count = 10
     update_count = 5
     delete_count = 0
+    bulk_frequency = 0
+    bulk_count = 10
     # document
     id_salt = ['a','b','c'] #None # None=UUIDs for keys; otherwise should be unique per host
     key_count = 10
@@ -49,6 +51,7 @@ class Potato(ApeComponent):
             ids = SaltedTimeIDFactory()
             ids._salt = self.configuration.id_salt
 
+        log.debug('starting %d threads', self.configuration.threads)
         for x in xrange(self.configuration.threads):
             thread = _OperationThread(self, ids)
             thread.start()
@@ -74,7 +77,9 @@ class Potato(ApeComponent):
         elif isinstance(request, ReadAllDocs):
             self.read_all_docs()
         elif isinstance(request, PerformOneIteration):
+            self.reset_metrics()
             self.threads[0].perform_iteration()
+            self.reporter.report_status()
         else:
             raise ApeException('couch potato does not know how to: ' + str(request))
 
@@ -163,23 +168,54 @@ class _OperationThread(Thread):
     def read_doc(self):
         id = random.choice(self.component.documents)
         return self.db.get(id)
-    def create_doc(self):
+
+    def read_bulk(self):
+        ids = [ random.choice(self.component.documents) for x in xrange(self.config.bulk_count) ]
+        results = self.db.view("_all_docs", include_docs=True, keys=ids)
+        docs = [ row.doc for row in results ]
+        return docs
+
+    def _make_doc(self):
         doc = { '_id': self.ids.create_id() }
         for n in xrange(self.config.key_count):
             key = random_string(self.config.key_length)
             doc[key] = random_string(self.config.value_length)
-        self.db.save(doc)
-    def update_doc(self):
-        doc = self.read_doc()
+        return doc
+
+    def create_doc(self):
+        self.db.save(self._make_doc())
+
+    def create_bulk(self):
+        docs = [ self._make_doc() for x in xrange(self.config.bulk_count) ]
+        self.db.update(docs)
+
+    def _alter_doc(self, doc):
         for n in xrange(self.config.update_keys):
             key = None
             while not key or key=='_id' or key=='_rev':
                 key = random.choice(doc.keys())
             doc[key] = random_string(self.config.value_length)
+
+    def update_doc(self):
+        doc = self.read_doc()
+        self._alter_doc(doc)
         self.db.save(doc)
+
+    def update_bulk(self):
+        docs = self.read_bulk()
+        for doc in docs:
+            self._alter_doc(doc)
+        self.db.update(docs)
+
     def delete_doc(self):
         doc = self.read_doc()
         self.db.delete(doc)
+
+    def delete_bulk(self):
+        docs = self.read_bulk()
+        for doc in docs:
+            doc['_deleted']=True
+        self.db.update(docs)
 
     def run(self):
         while not self.component.threads_shutdown:
@@ -191,24 +227,40 @@ class _OperationThread(Thread):
 
     def perform_iteration(self):
         """perform configured number of each operation in random order"""
+        log.debug('starting DB iteration')
         sequence = ['R']*self.config.read_count + ['C']*self.config.create_count + ['U']*self.config.update_count + ['D']*self.config.delete_count
         random.shuffle(sequence)
         for c in sequence:
+            bulk = random.random()<self.config.bulk_frequency
             try:
-                if c[0]=='C':
-                    self.create_doc()
-                    self.create_operations+=1
-                elif c[0]=='R':
-                    self.read_doc()
-                    self.read_operations+=1
-                elif c[0]=='U':
-                    self.update_doc()
-                    self.update_operations+=1
-                elif c[0]=='D':
-                    self.delete_doc()
-                    self.delete_operations+=1
+                if bulk:
+                    if c[0]=='C':
+                        self.create_bulk()
+                        self.create_operations+=self.config.bulk_count
+                    elif c[0]=='R':
+                        self.read_bulk()
+                        self.read_operations+=self.config.bulk_count
+                    elif c[0]=='U':
+                        self.update_bulk()
+                        self.update_operations+=self.config.bulk_count
+                    elif c[0]=='D':
+                        self.delete_bulk()
+                        self.delete_operations+=self.config.bulk_count
                 else:
-                    raise ApeException('this should never happen: ' + repr(c))
+                    if c[0]=='C':
+                        self.create_doc()
+                        self.create_operations+=1
+                    elif c[0]=='R':
+                        self.read_doc()
+                        self.read_operations+=1
+                    elif c[0]=='U':
+                        self.update_doc()
+                        self.update_operations+=1
+                    elif c[0]=='D':
+                        self.delete_doc()
+                        self.delete_operations+=1
+                    else:
+                        raise ApeException('this should never happen: ' + repr(c))
             except Exception:
                 if self.component.threads_shutdown:
                     return

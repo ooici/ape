@@ -16,7 +16,7 @@ gevent.monkey.patch_all(aggressive=False)
 
 from ape.manager.simple_manager import SimpleManager, InventoryListener, Listener
 from ape.common.requests import PingRequest, AddComponent, StartRequest, InventoryRequest, StopRequest, PerformanceResult, ChangeConfiguration
-from ape.component.potato import Potato, PerformOneCycle
+from ape.component.potato import Potato, PerformOneIteration, ReadAllDocs
 from ape.component.potato import Configuration as PotatoConfiguration
 from ape.common.messages import  component_id, agent_id, component_type
 from time import sleep, time
@@ -31,7 +31,7 @@ class PerformanceListener(Listener):
             try:
                 self.lock.acquire()
                 self.latest_data[message.agent] = message.result
-#                print 'ops/sec: %f create, %f read, %f update, %f delete, %d nodes' % self.get_rates()
+                print 'ops/sec: %f create, %f read, %f update, %f delete, %d nodes' % self.get_rates()
             finally:
                 self.lock.release()
     def get_rates(self):
@@ -47,6 +47,17 @@ class PerformanceListener(Listener):
 def wait(a):
     raw_input('--- press enter to continue ---')
 #    sleep(a)
+
+def wait_active(listener, components):
+    keep_looping = True
+    while keep_looping:
+        sleep(1)
+        if len(listener.latest_data)<len(components):
+            continue
+        keep_looping = False
+        for stats in listener.latest_data.values():
+            if stats.data['read']==0:
+                keep_looping = True
 
 _CHARSET="-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
@@ -84,12 +95,18 @@ def main():
         sleep(5)
 
     # start component on each agent and let it add documents to db
-    total_documents_target = 1000000
-    documents_per_iteration = 20000
     components = []
     initial_config = PotatoConfiguration()
+    initial_config.bulk_count = 100
+    initial_config.bulk_frequency = 1
+    initial_config.threads=12
     initial_config.read_count = initial_config.update_count = initial_config.delete_count = 0
-    initial_config.create_count = int(documents_per_iteration/nodes)
+    initial_document_count = 0
+    initial_config.create_count = int(initial_document_count/(nodes*initial_config.bulk_count))
+    initial_config.id_salt = None
+
+#    initial_config.create_count = 5
+
     agent_list = [id for id in l1.inventory.keys()]
     salt = {}
     count = 0
@@ -101,25 +118,48 @@ def main():
         # give each agent unique salt for id generation
         salt[agent] = _CHARSET[count]
         count+=1
-        initial_config.id_salt = ['-','-',salt[agent]]
+#        initial_config.id_salt = ['-','-',salt[agent]]
 
         component = Potato(component_name, None, initial_config)
         m.send_request(AddComponent(component), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
         sleep(2) # need at least a little time to let first component register name or second may fail due to race condition
+        if initial_document_count>0:
+            m.send_request(PerformOneIteration(), agent_filter=agent_id(agent), component_filter=component_id(component_name))
 
-    total_start = time()
-    for x in xrange(total_documents_target/documents_per_iteration):
-        l2.latest_data.clear()
-        m.send_request(PerformOneCycle(), component_filter=component_type(Potato))
-        iteration_start = time()
+    if initial_document_count>0:
+        start_time = time()
         print 'waiting for containers to finish creating initial documents in db'
         while len(l2.latest_data)<len(components):
-            sleep(5)
-        elapsed = time() - iteration_start
-        print 'created %d docs in %f secs: %f ops/sec' % (documents_per_iteration, elapsed, documents_per_iteration/elapsed)
-    elapsed = time() - total_start
-    print 'DONE: created %d docs in %f secs' % (total_documents_target, elapsed)
+            sleep(1)
+        elapsed = time() - start_time
+        print 'initialization ops/sec: %f create, %f read, %f update, %f delete, %d nodes' % l2.get_rates()
+        print 'created %d docs in %f secs' % (initial_document_count, elapsed)
 
+    # initialize DB only -- do not perform load test
+    if update_count < 0:
+        exit()
+
+    cycle_config = PotatoConfiguration()
+    cycle_config.threads = 2
+    cycle_config.read_count = 100
+    cycle_config.create_count = update_count
+    cycle_config.update_count = update_count
+
+    print 'starting db operations -- initializing first'
+    for agent in agent_list:
+        print 'updating configuration of agent ' + agent
+        cycle_config.id_salt = ['-','-',salt[agent]]
+        m.send_request(ChangeConfiguration(cycle_config), agent_filter=agent_id(agent), component_filter=component_type(Potato))
+    m.send_request(StartRequest(), component_filter=component_type(Potato))
+
+    l2.latest_data.clear()
+    wait_active(l2, components)
+    print 'agents have all ready initial document list -- now performing load test'
+
+    # log results as they arrive for 5 min then stop traffic
+    sleep(300)
+    m.send_request(StopRequest(), component_filter=component_type(Potato))
+    sleep(5)
 
 
 if __name__ == "__main__":

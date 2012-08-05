@@ -38,7 +38,7 @@
                   "supd_directory": "/tmp"
                 },
                 "slots": 1,
-                "base_need": 1
+                "base_need": 4
               }
             }
           }

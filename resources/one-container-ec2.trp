@@ -1,5 +1,5 @@
 
-launch-name: ec2launch
+launch-name: ape
 launch-target: ec2
 
 service-definitions: agent-and-services.yml
