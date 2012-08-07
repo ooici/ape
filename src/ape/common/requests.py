@@ -1,5 +1,6 @@
 
 from ape.common.types import ApeRequest, ApeResult
+import logging
 
 # operate on ape.agent.pyon_process.PyonApeAgent
 class PingRequest(ApeRequest): pass
@@ -30,6 +31,16 @@ class ChangeConfiguration(ApeRequest):
 class PerformanceResult(ApeResult):
     def __init__(self, data):
         self.data = data
-#
-#class RegistryLookup(ApeRequest):
-#    def __init__(self,
+
+def getResult(function, *a, **b):
+    try:
+        result = function(*a, **b)
+        return OperationResult(result=result)
+    except Exception,e:
+        logging.warn('operation failed with exception', exc_info=True)
+        return OperationResult(exception=e)
+
+class OperationResult(ApeResult):
+    def __init__(self, result=None, exception=None):
+        self.result = result
+        self.exception = exception
