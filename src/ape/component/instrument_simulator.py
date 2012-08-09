@@ -21,6 +21,7 @@ from threading import Thread
 import traceback
 
 import pickle
+from ion.services.dm.utility.granule_utils import CoverageCraft
 
 class Configuration(object):
     def __init__(self, data_product, interval_seconds, instrument_configuration=None, sleep_even_zero=True,
@@ -98,8 +99,15 @@ class InstrumentSimulator(ApeComponent):
             device_id = self.imsclient.create_instrument_device(instrument_device=device)
             self.imsclient.assign_instrument_model_to_instrument_device(instrument_model_id=self._get_model_id(), instrument_device_id=device_id)
             # create a stream definition
-            data_product = IonObject(RT.DataProduct,name=self.configuration.data_product,description='ape producer')
-            self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=self._get_streamdef_id())
+
+            craft = CoverageCraft
+            sdom, tdom = craft.create_domains()
+            sdom = sdom.dump()
+            tdom = tdom.dump()
+            parameter_dictionary = craft.create_parameters()
+            parameter_dictionary = parameter_dictionary.dump()
+            data_product = IonObject(RT.DataProduct,name=self.configuration.data_product,description='ape producer', spatial_domain=sdom, temporal_domain=tdom)
+            self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=self._get_streamdef_id(), parameter_dictionary=parameter_dictionary)
             self.damsclient.assign_data_product(input_resource_id=device_id, data_product_id=self.data_product_id)
             if self.configuration.persist_product:
                 self.data_product_client.activate_data_product_persistence(data_product_id=self.data_product_id, persist_data=True, persist_metadata=True)
