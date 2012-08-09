@@ -267,7 +267,6 @@ class _Transform(TransformDataProcess):
             for name,stream in self.streams.iteritems():
                 if name!='stats_stream':
                     self.publishers.append(getattr(self,name))
-                else:
         for publisher in self.publishers:
             publisher.publish(msg)
 
