@@ -4,7 +4,6 @@ from time import sleep
 
 from uuid import uuid4 as unique
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
-from prototype.sci_data.constructor_apis import StreamDefinitionConstructor
 from pyon.ion.granule.record_dictionary import RecordDictionaryTool
 from pyon.ion.granule.taxonomy import TaxyTool
 from pyon.ion.transform import TransformDataProcess
@@ -13,11 +12,10 @@ import time
 
 from ape.common.types import ApeComponent, ApeException
 from ape.common.requests import StartRequest, StopRequest, RegisterWithContainer, PerformanceResult
-from pyon.public import PRED, RT, log, IonObject, StreamPublisherRegistrar, StreamSubscriberRegistrar
+from pyon.public import PRED, RT, log, IonObject, StreamSubscriber, StreamPublisher
 from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.dm.itransform_management_service import TransformManagementServiceClient
-from interface.objects import StreamQuery
 from pyon.ion.granule.granule import build_granule
 import pickle
 from numpy import array, ndarray
@@ -84,17 +82,16 @@ class TransformComponent(ApeComponent):
                 raise ApeException('did not find data product for name: ' + data_product)
             #        stream_ids,_ = self.resource_registry.find_objects(self.configuration.data_product, PRED.hasStream, None, True)
             stream_ids,_ = self.resource_registry.find_resources(RT.Stream, name=data_product)
-            stream_id = stream_ids[0]
             #        stream_id = data_product_objs[0].stream_definition_id
-            stream_definition_id = self.pubsub_management.find_stream_definition(stream_id=stream_id, id_only=True)
-            all_stream_ids.append(stream_id)
-        query = StreamQuery(all_stream_ids)
-        subscription_id = self.pubsub_management.create_subscription(query=query, exchange_name=self.process_name + '_exchange')
+            all_stream_ids.extend(stream_ids)
+        subscription_id = self.pubsub_management.create_subscription(name=self.process_name + '_exchange', stream_ids=all_stream_ids)
 
         output_dictionary = self._register_output_products()
         if self.configuration.stats_interval>0:
             stream_id = output_dictionary['stats_stream']
             self._enable_stats_callback(stream_id)
+
+        #@TODO: TransformManagement doesn't exist
         self.transform = self.transform_management.create_transform(name=self.process_name + '_transform',
                                                 in_subscription_id=subscription_id, out_streams=output_dictionary,
                                                 process_definition_id=self._get_process_definition_id(), configuration=self.configuration.get_transform_config())
@@ -123,20 +120,8 @@ class TransformComponent(ApeComponent):
 
 
     # TODO: this should be delegated to transform configuration
-    def _get_streamdef_id(self):
-        sdc = StreamDefinitionConstructor(description='Parsed conductivity temperature and pressure observations from a Seabird 37 CTD', nil_value=-999.99, encoding='hdf5')
-        sdc.define_temporal_coordinates(reference_frame='http://www.opengis.net/def/trs/OGC/0/GPS', definition='http://www.opengis.net/def/property/OGC/0/SamplingTime',
-            reference_time='1970-01-01T00:00:00Z', unit_code='s' )
-        sdc.define_geospatial_coordinates(definition="http://www.opengis.net/def/property/OGC/0/PlatformLocation",reference_frame='urn:ogc:def:crs:EPSG::4979')
-
-        # TODO: remove unit, range, definition
-        # used only in old-style granule
-        sdc.define_coverage(field_name='value',
-            field_definition="urn:x-ogc:def:phenomenon:OGC:temperature",
-            field_units_code='Cel',
-            field_range=[-99999.0, 99999.0])
-        stream_definition = sdc.close_structure()
-        stream_def_id = self.pubsub_management.create_stream_definition(container=stream_definition, name='RAW stream')
+    def _get_streamdef_id(self, pdict=None):
+        stream_def_id = self.pubsub_management.create_stream_definition(name='RAW stream', parameter_dictionary=pdict)
         return stream_def_id
 
     def _register_output_products(self):
@@ -154,6 +139,7 @@ class TransformComponent(ApeComponent):
             log.debug('data product was already in the registry')
             self.data_product_id = product_ids[0]
         else:
+            #@TODO: Do not use CoverageCraft
             craft = CoverageCraft
             sdom, tdom = craft.create_domains()
             sdom = sdom.dump()
@@ -162,9 +148,9 @@ class TransformComponent(ApeComponent):
             parameter_dictionary = parameter_dictionary.dump()
 
             data_product = IonObject(RT.DataProduct, name=data_product_name, description='ape transform', spatial_domain=sdom, temporal_domain=tdom)
+            stream_def_id = self._get_streamdef_id(parameter_dictionary)
             self.data_product_id = self.data_product_client.create_data_product(data_product=data_product,
-                stream_definition_id=self._get_streamdef_id(), parameter_dictionary=parameter_dictionary)
-            #                self.damsclient.assign_data_product(input_resource_id=device_id, data_product_id=self.data_product_id)
+                stream_definition_id=stream_def_id, parameter_dictionary=parameter_dictionary)
         if self.configuration.persist_product:
             self.data_product_client.activate_data_product_persistence(data_product_id=self.data_product_id, persist_data=True, persist_metadata=True)
         stream_ids,_ = self.resource_registry.find_resources(RT.Stream, name=data_product_name, id_only=True)
@@ -176,11 +162,8 @@ class TransformComponent(ApeComponent):
     def _enable_stats_callback(self, stream_id):
         log.debug('registering stats callback')
         exchange = self.process_name+'_stats'
-        query = StreamQuery([stream_id])
-        subscription_id = self.pubsub_management.create_subscription(query=query, exchange_name=exchange)
-        subscription = self.pubsub_management.read_subscription(subscription_id)
-        subscriber_registrar = StreamSubscriberRegistrar(process=self.agent, container=self.agent.container)
-        subscriber = subscriber_registrar.create_subscriber(exchange_name=exchange, callback=self._on_stats_message)
+        subscription_id = self.pubsub_management.create_subscription(name=exchange, stream_ids=[stream_id])
+        subscriber = StreamSubscriber(exchange, self._on_stats_message)
         subscriber.start()
         self.pubsub_management.activate_subscription(subscription_id=subscription_id)
 
@@ -213,6 +196,7 @@ class _Transform(TransformDataProcess):
     count=0
     def on_start(self):
         super(_Transform,self).on_start()
+        #@TODO: TaxyTool is deprecated do not use
         self.tax = TaxyTool()
         for field in self.CFG['fields']:
             self.tax.add_taxonomy_set(field)
