@@ -8,12 +8,11 @@
 from ape.common.types import ApeComponent, ApeException, ApeRequest
 from ape.component.instruments import build_instrument
 from ape.common.requests import StartRequest, StopRequest, RegisterWithContainer, PerformanceResult
-from pyon.public import PRED, RT, log, IonObject, StreamPublisherRegistrar
+from pyon.public import PRED, RT, log, IonObject, StreamPublisher
 from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceClient
-from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
 
 from math import sin
 from time import time, sleep
@@ -55,7 +54,6 @@ class InstrumentSimulator(ApeComponent):
         self.imsclient = InstrumentManagementServiceClient(node=self.agent.container.node)
         self.damsclient = DataAcquisitionManagementServiceClient(node=self.agent.container.node)
         self.data_product_client = DataProductManagementServiceClient(node=self.agent.container.node)
-        self.stream_publisher_registrar = StreamPublisherRegistrar(process=self.agent,container=self.agent.container)
 
         # add appropriate entries to the pycc registry
         if self.configuration.easy_registration:
@@ -98,7 +96,9 @@ class InstrumentSimulator(ApeComponent):
             device = IonObject(RT.InstrumentDevice, name=self.configuration.data_product, description='instrument simulator', serial_number=self.configuration.data_product )
             device_id = self.imsclient.create_instrument_device(instrument_device=device)
             self.imsclient.assign_instrument_model_to_instrument_device(instrument_model_id=self._get_model_id(), instrument_device_id=device_id)
-            # create a stream definition
+            
+
+            #@TODO: Do not use CoverageCraft ever.
 
             craft = CoverageCraft
             sdom, tdom = craft.create_domains()
@@ -107,7 +107,8 @@ class InstrumentSimulator(ApeComponent):
             parameter_dictionary = craft.create_parameters()
             parameter_dictionary = parameter_dictionary.dump()
             data_product = IonObject(RT.DataProduct,name=self.configuration.data_product,description='ape producer', spatial_domain=sdom, temporal_domain=tdom)
-            self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=self._get_streamdef_id(), parameter_dictionary=parameter_dictionary)
+            stream_def_id = self._get_streamdef_id(parameter_dictionary)
+            self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=stream_def_id, parameter_dictionary=parameter_dictionary)
             self.damsclient.assign_data_product(input_resource_id=device_id, data_product_id=self.data_product_id)
             if self.configuration.persist_product:
                 self.data_product_client.activate_data_product_persistence(data_product_id=self.data_product_id, persist_data=True, persist_metadata=True)
@@ -138,16 +139,17 @@ class InstrumentSimulator(ApeComponent):
         model_ids = self.resource_registry.find_resources(restype=RT.InstrumentModel, id_only=True, name=self.configuration.instrument.model_name)
         return model_ids[0][0]
 
-    def _get_streamdef_id(self):
+    def _get_streamdef_id(self, pdict=None):
         #TODO: figure out how to read existing RAW definition instead of just creating
         #try:
             #stream_type = self.pubsubclient.read_stream_definition()
-        stream_def_id = self.pubsubclient.create_stream_definition(container=self.configuration.instrument.stream_definition, name='RAW stream')
+        stream_def_id = self.pubsubclient.create_stream_definition(name='RAW stream',parameter_dictionary=pdict)
         return stream_def_id
 
     def _create_publisher(self):
         stream_ids, _ = self.resource_registry.find_objects(self.data_product_id, PRED.hasStream, None, True)
-        self.publisher = self.stream_publisher_registrar.create_publisher(stream_ids[0])
+        stream_id = stream_ids[0]
+        self.publisher = StreamPublisher(stream_id=stream_id)
 
     class _DataEmitter(Thread):
         ''' do not make outer class a Thread b/c start() is already meaningful to a pyon process '''

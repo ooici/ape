@@ -8,11 +8,10 @@ import logging as log
 
 from ape.common.types import ApeComponent, ApeException
 from ape.common.requests import StartRequest, StopRequest, RegisterWithContainer
-from pyon.public import PRED, RT, log, IonObject, StreamPublisherRegistrar
+from pyon.public import PRED, RT, log, IonObject
 from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.dm.itransform_management_service import TransformManagementServiceClient
-from interface.objects import StreamQuery
 
 class Configuration(object):
     def __init__(self, data_product, log_value=False):
@@ -48,13 +47,8 @@ class DataProductConsumer(ApeComponent):
         data_product_objs,_ = self.resource_registry.find_resources(restype=RT.DataProduct, name=self.configuration.data_product)
         if not len(data_product_objs):
             raise ApeException('did not find data product for name: ' + self.configuration.data_product)
-#        stream_ids,_ = self.resource_registry.find_objects(self.configuration.data_product, PRED.hasStream, None, True)
         stream_ids,_ = self.resource_registry.find_resources(RT.Stream, name=self.configuration.data_product)
-        stream_id = stream_ids[0]
-#        stream_id = data_product_objs[0].stream_definition_id
-        stream_definition_id = pubsub_management.find_stream_definition(stream_id=stream_id, id_only=True)
-        query = StreamQuery(stream_ids)
-        subscription_id = pubsub_management.create_subscription(query=query, exchange_name=self.process_name + '_exchange')
+        subscription_id = pubsub_management.create_subscription(name=self.process_name + '_exchange', stream_ids=stream_ids)
         self.transform = self.transform_management.create_transform(name=self.process_name + '_transform', in_subscription_id=subscription_id,process_definition_id=self._get_process_definition_id())
 
     def register_process_definition(self):
