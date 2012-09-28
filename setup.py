@@ -2,12 +2,12 @@ from distutils.core import setup
 
 package_dir = {'ape': 'src/ape'}
 
-setup(name='ape',
-    version='2012.7.16',
+setup(
+    name='ape',
+    version='2012.9.28',
     author='Jonathan Newbrough',
     author_email='jonathan.newbrough@gyregroup.com',
     url='https://github.com/ooici/ape',
     package_dir = {'': 'src'},
-#    py_packages=['ape.agent', 'ape.common', 'ape.component'],
     packages=['ape', 'ape.agent', 'ape.common', 'ape.component'],
 )

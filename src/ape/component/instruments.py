@@ -2,7 +2,6 @@
 from ape.common.types import ApeException
 
 from prototype.sci_data.constructor_apis import StreamDefinitionConstructor, PointSupplementConstructor
-from pyon.ion.granule.granule import build_granule, Granule
 from interface.objects import Taxonomy
 from pyon.ion.granule.record_dictionary import RecordDictionaryTool
 from pyon.ion.granule.taxonomy import TaxyTool
