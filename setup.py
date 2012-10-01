@@ -4,7 +4,7 @@ package_dir = {'ape': 'src/ape'}
 
 setup(
     name='ape',
-    version='2012.9.28',
+    version='2012.10.1',
     author='Jonathan Newbrough',
     author_email='jonathan.newbrough@gyregroup.com',
     url='https://github.com/ooici/ape',
