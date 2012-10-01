@@ -2,7 +2,7 @@
 
 
 from uuid import uuid4 as unique
-from pyon.ion.granule.record_dictionary import RecordDictionaryTool
+from ion.services.dm.utility.granule import RecordDictionaryTool
 from pyon.ion.transform import TransformDataProcess
 import logging as log
 

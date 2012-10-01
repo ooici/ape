@@ -1,11 +1,16 @@
-''' simple data product consumer that receives data from an endpoint and throws it away. '''
+''' simple data product consumer that receives data from an endpoint and throws it away.
+
+WARNING: not working!  TaxyTool was removed, which broke this tool.
+edited out references so it would import,
+but need to figure out new way of defining fields for granule
+
+'''
 from threading import Thread, Lock
 from time import sleep
 
 from uuid import uuid4 as unique
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
-from pyon.ion.granule.record_dictionary import RecordDictionaryTool
-from pyon.ion.granule.taxonomy import TaxyTool
+from ion.services.dm.utility.granule import RecordDictionaryTool
 from pyon.ion.transform import TransformDataProcess
 #import logging as log
 import time
@@ -16,7 +21,7 @@ from pyon.public import PRED, RT, log, IonObject, StreamSubscriber, StreamPublis
 from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.dm.itransform_management_service import TransformManagementServiceClient
-from pyon.ion.granule.granule import build_granule
+#from pyon.ion.granule.granule import build_granule
 import pickle
 from numpy import array, ndarray
 from ion.services.dm.utility.granule_utils import CoverageCraft
@@ -44,12 +49,6 @@ class Configuration(object):
         self.output_data_products.append(data_product)
     def add_output_field(self, field):
         self.field_names.append(field)
-    def get_taxonomy(self):
-        if not self.tax:
-            self.tax = TaxyTool()
-            for field in self.field_names:
-                self.tax.add_taxonomy_set(field)
-        return self.tax
     def get_transform_config(self):
         return { 'function': pickle.dumps(self.transform_function),
                  'fields': self.field_names,
@@ -196,18 +195,11 @@ class _Transform(TransformDataProcess):
     count=0
     def on_start(self):
         super(_Transform,self).on_start()
-        #@TODO: TaxyTool is deprecated do not use
-        self.tax = TaxyTool()
-        for field in self.CFG['fields']:
-            self.tax.add_taxonomy_set(field)
         self.transform_code = pickle.loads(self.CFG['function'])
         interval = int(self.CFG['stats_interval'])
         log_stats = self.CFG['log_stats']
         report_stats = self.CFG['report_stats']
         if interval>0 and (log_stats or report_stats):
-            self.stats_tax = TaxyTool()
-            for field in 'count','elapsed':
-                self.stats_tax.add_taxonomy_set(field)
             pub = getattr(self, 'stats_stream') if report_stats else None
             log.error('stats stream is %r', pub)
             log_name = getattr(self, 'name') if log_stats else None
@@ -231,10 +223,10 @@ class _Transform(TransformDataProcess):
             if self.transform_code:
                 exec self.transform_code
 
-            if output:
-                payload = self.convert_values(output, self.tax)
-                granule_out = build_granule(data_producer_id='UNUSED', taxonomy=self.tax, record_dictionary=payload)
-                self.publish_output(granule_out)
+#            if output:
+#                payload = self.convert_values(output, self.tax)
+#                granule_out = build_granule(data_producer_id='UNUSED', taxonomy=self.tax, record_dictionary=payload)
+#                self.publish_output(granule_out)
         except Exception as ex:
             ## UGLY! i shouldn't have to do this, but otherwise the container silently drops the exception...
 #            log.debug('exception in transform process', exc_info=True)
