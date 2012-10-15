@@ -46,7 +46,7 @@ class SimpleInstrument(InstrumentType):
         value = self.get_value(time)
 
         pkg = RecordDictionaryTool(self.parameter_dictionary)
-        pkg['value'] = array([value]*self.message_size)
+        pkg['salinity'] = array([value]*self.message_size)
         pkg['lat'] = array([lat]*self.message_size)
         pkg['lon'] = array([lon]*self.message_size)
         granule = pkg.to_granule()

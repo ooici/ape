@@ -13,6 +13,7 @@ from interface.services.dm.ipubsub_management_service import PubsubManagementSer
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceClient
+from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
 
 from math import sin
 from time import time, sleep
@@ -149,7 +150,7 @@ class InstrumentSimulator(ApeComponent):
     def _create_publisher(self):
         stream_ids, _ = self.resource_registry.find_objects(self.data_product_id, PRED.hasStream, None, True)
         stream_id = stream_ids[0]
-        self.publisher = StreamPublisher(stream_id=stream_id)
+        self.publisher = StreamPublisher(process=self.agent, stream_id=stream_id)
 
     class _DataEmitter(Thread):
         ''' do not make outer class a Thread b/c start() is already meaningful to a pyon process '''

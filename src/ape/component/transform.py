@@ -162,7 +162,7 @@ class TransformComponent(ApeComponent):
         log.debug('registering stats callback')
         exchange = self.process_name+'_stats'
         subscription_id = self.pubsub_management.create_subscription(name=exchange, stream_ids=[stream_id])
-        subscriber = StreamSubscriber(exchange, self._on_stats_message)
+        subscriber = StreamSubscriber(process=self.agent, exchange_name=exchange, callback=self._on_stats_message)
         subscriber.start()
         self.pubsub_management.activate_subscription(subscription_id=subscription_id)
 

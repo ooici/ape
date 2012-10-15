@@ -1,0 +1,75 @@
+
+couch:
+  type: manual
+  hostname: pub-4-106.dev.oceanobservatories.org
+  username: sofa
+  password: sofa
+
+rabbit:
+  type: manual   # or manual or launch-generated
+  hostname: pub-4-106.dev.oceanobservatories.org
+  username: guest
+  password: guest
+
+elasticsearch:
+  type: manual   # or manual or launch-generated
+  username: # if missing, will create random value
+  password:
+
+graylog:
+  type: manual   # or manual or launch-generated
+
+containers:
+  name: unit-test
+  launch-plan-template: ../launch-plans/sandbox/lightweight
+  cloud-config: ooinimbus-static.conf
+  recipes: https://github.com/newbrough/dt-data/tarball/master
+  execution-engines:
+    - name: services
+      nodes: 1       # initial number of VMs to launch
+      containers: 3  # pycc containers per node
+      processes: 10  # number of IonProcess slots per container
+      deploy-file: test/src/system/r2deploy.yml
+
+system:
+  preload:
+    directory: res/preload/r2_ioc
+    tags: [demo, gummi, scale]
+  instruments:
+    # "simulated" is a group made up of 450 specific instruments defined in the preload
+    - group: simulated
+      pattern: ctd-sensor-%03d
+      range: 1-450
+      output: parsed
+  transforms:
+    # sequence of transforms, created in order (so output of prior can be found in RR to use as input for next)
+    - name: L0                  # name of GROUP of transforms
+      count: 1-to-1             # create 1 transform for each member of the input group
+      inputs: simulated         # input group can be instruments or other transforms
+      module: ion.foo.bar
+      class: L0TransformThing
+    - name: L1a
+      count: 1-to-1
+      inputs: L0
+      module: ion.foo.bar
+      class: L1ATransformThing
+    - name: L1b
+      count: 1-to-1
+      inputs: L1a
+      module: ion.foo.bar
+      class: L1BTransformThing
+    - name: L2a
+      count: 1-to-1
+      inputs: L2b
+      module: ion.foo.bar
+      class: L1BTransformThing
+    - name: accumulate
+      count: 1                 # one transform process consuming multiple inputs
+      inputs: L2b
+      module: ape.foo.bar
+      class: ManyToOne
+    - name: measure
+      inputs: accumulate
+      module: ape.foo.bar
+      class: MeasureDataRate   # special class to report message rate back to ape client
+
