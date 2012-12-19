@@ -68,6 +68,7 @@ class _PreloadBaseTask(object):
         self.loader.container = container
         self.loader.rpc_sender = process
         self.loader.CFG = process.CFG
+        self.loader.resource_ids = {}
         self.success = False
 
     def run(self):
@@ -84,7 +85,7 @@ class _PreloadBaseTask(object):
             return
 
     def prepare_loader(self):
-        if 'resource_ids' not in self.loader.__dict__ or not self.loader.resource_ids:
+        if not self.loader.resource_ids:
             self.loader._load_system_ids()
         self.loader._prepare_incremental()
 
