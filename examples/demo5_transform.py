@@ -10,6 +10,8 @@ the consumer prints the values it sees, which should alternate between 0.1 and 0
 """
 
 import gevent.monkey
+from threading import Lock
+import time
 from ape.component.transform import TransformComponent
 from ape.component.transform import Configuration as TransformConfiguration
 
@@ -30,12 +32,32 @@ def wait(a):
     raw_input('--- press enter to continue ---')
 #    sleep(a)
 
-sum_values = "output['value'] = sum(input['value']) "
+sum_values = "output['value'] = sum(input['value'])"
+
+class PerformanceListener(Listener):
+    def __init__(self):
+        self.latest_data = None
+        self.lock = Lock()
+    def on_message(self, message):
+        if isinstance(message.result, PerformanceResult):
+            try:
+                self.lock.acquire()
+                self.latest_data = message.result
+            finally:
+                self.lock.release()
+    def get_rate(self):
+        data = self.latest_data.data if self.latest_data else None
+        if data:
+            return data['count']/data['elapsed']
+        else:
+            return 0
 
 def main():
     l1 = InventoryListener()
     m = SimpleManager()
+    l2 = PerformanceListener()
     m.add_listener(l1)
+    m.add_listener(l2)
 
     # get inventory -- see what agents we have running
     m.send_request(InventoryRequest())
@@ -73,6 +95,8 @@ def main():
         transform_config.add_input(instrument2_dataproduct_name)
         transform_config.add_output(transform_dataproduct_name)
         transform_config.add_output_field('value')
+        transform_config.stats_interval = 10
+        transform_config.report_stats = True
         transform = TransformComponent(transform_component_name, None, transform_config)
 #        print 'outputs: ' + repr(transform.configuration.outputs)
         m.send_request(AddComponent(transform), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
@@ -89,8 +113,15 @@ def main():
         m.send_request(StartRequest(), agent_filter=agent_id(agent), component_filter=component_id(producer2_component_name))
         sleep(2) # need at least a little time to let first component register name or second may fail due to race condition
 
-    # log results as they arrive for 5 min then stop traffic
-    sleep(30)
+    # log results as they arrive for a while
+    wait_time=90
+    end_time = time.time()+wait_time
+    wait_interval=5
+    while time.time()<end_time:
+        print 'messages per sec: %f'%l2.get_rate()
+        sleep(wait_interval)
+
+    # then stop traffic
     m.send_request(StopRequest(), component_filter=component_type(InstrumentSimulator))
     print 'data producer stopped'
     sleep(5)

@@ -59,3 +59,6 @@ class Configuration(object):
 
     def as_dict(self):
         return self.config
+
+    def iteritems(self):
+        return self.config.iteritems()

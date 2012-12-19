@@ -1,7 +1,6 @@
 """
-component to put load on the couch db from within the container
+component to put load on rabbit MQ from within the container
 
-this component makes direct DB calls instead of using the pycc couchdb interface
 """
 import random
 import string

@@ -15,9 +15,14 @@ from ape.manager.simple_manager import SimpleManager, Listener, InventoryListene
 from ape.common.requests import AddComponent, InventoryRequest
 from ape.common.messages import  component_id
 from ape.common.requests import InventoryResult
+from ape.common.types import ApeException
+from ape.component.preloader import Preloader, PerformPreload, NotifyPreloadComplete, PathConfiguration, TemplateConfiguration
+from ape.common.requests import PingRequest, AddComponent
+from ape.common.messages import  component_id, agent_id
+from ion.processes.bootstrap.ion_loader import TESTED_DOC, DEFAULT_CATEGORIES
 
 # simple communication with agents (ping, inventory, etc) will wait at least this long for responses
-MIN_WAIT_RESPONSE=30
+MIN_WAIT_RESPONSE=5 #30
 
 class SystemTest(object):
 
@@ -42,7 +47,6 @@ class SystemTest(object):
         self._init_manager()
 
     def reconnect_system(self):
-        print '**** reconnect_system'
         self.couch = reconnect_couch(self.config)
         self.rabbit = reconnect_rabbit(self.config)
         self.es = reconnect_elasticsearch(self.config)
@@ -116,8 +120,50 @@ class SystemTest(object):
     ############################################################################################
 
     def preload_system(self, config, manager, system):
-        """ perform DB preload as defined in config file """
-        pass
+        """ perform DB preload as defined in config file
+
+        should only be called once -- it starts a component called 'loader'
+        have to refactor to make sure it doesn't create a second loader if we want to be able to call multiple times
+        """
+#        import pprint
+#        pprint.pprint(config.as_dict())
+#        obj = config.get("preload")
+#        print 'preload objects:::'
+#        for o in obj:
+#            pprint.pprint(o.as_dict())
+#        print ':::preload objects'
+
+        preload_configs = config.get("preload")
+        if not preload_configs:
+            return
+
+        some_agent = self.get_agents()[0]
+        self.manager.send_request(AddComponent(Preloader('loader', None, None)), agent_filter=agent_id(some_agent), component_filter=component_id('AGENT'))
+        for preload_config in preload_configs:
+            if preload_config.get("path") or preload_config.get("scenarios"):
+                self._preload_path(preload_config)
+            elif preload_config.get("range"):
+                self._preload_template(preload_config)
+            else:
+                name = preload_config.get("name") or "<no name>"
+                raise ApeException("preload configuration " + name + " has no path, scenarios or range specified")
+
+    def _preload_path(self, config):
+        name = config.get("name")
+        path = config.get("path") or TESTED_DOC
+        scenarios = config.get("scenarios")
+        req = PerformPreload(name, PathConfiguration(path=path, scenarios=scenarios))
+        self.manager.send_request(req, component_filter=component_id('loader'))
+
+    def _preload_template(self, config):
+        name = config.get("name")
+
+        range_str = config.get("range").split('-')
+        range = xrange(int(range_str[0]), int(range_str[1])+1)
+        templates = [ template.as_dict() for template in config.get('templates') ]
+
+        req = PerformPreload(name, TemplateConfiguration(range=range, templates=templates))
+        self.manager.send_request(req, component_filter=component_id('loader'))
 
     def start_devices(self, config, manager, system):
         """ start all devices defined in config file """
@@ -149,6 +195,9 @@ class SystemTest(object):
             if new_end>end:
                 end = new_end
         return self.inventory.inventory
+
+    def get_agents(self):
+        return self.inventory.inventory.keys()
 
 class MeasureDataFlow(Listener):
     def get_message_rate(self):

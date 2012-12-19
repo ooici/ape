@@ -29,15 +29,21 @@ def reconnect_containers(config, couch, rabbit, graylog, elasticsearch):
     return containers
 
 class Containers(object):
-    """ a set of ExecutionEngines """
+    """ a set of ExecutionEngines
+
+    this object wraps the launch-plans and cloudinitd portions of a container launch
+
+    tmp/launch-plan/<pid>/plan/         result of generate-plan
+                          cloud.yml     modified copy of profiles/<template>.yml.example
+                          launch.yml    modified copy of res/launch/<template>.yml
+    """
     def __init__(self, config, couch=None, rabbit=None, graylog=None, elasticsearch=None):
+        self.config = config
+        self.target_dir = os.path.join('tmp', 'launch-plan', str(os.getpid()))
+        self.plan = os.path.join(self.target_dir, 'plan')
         self.name = config.get('containers.name')
-        self.source_directory = config.get('containers.launch-plan-template')
-        self.launch_plan = os.path.join('tmp', 'launch-plan', str(os.getpid()))
-        # TODO: this will become a list
-        self.engine_config = config.get('containers.execution-engines.0')
-        self.cloud_config = config.get('containers.cloud-config')
-        self.recipes = config.get('containers.recipes')
+        self.source_directory = config.get('containers.launch-plan')
+
         self.couch = couch
         self.rabbit = rabbit
         self.graylog = graylog
@@ -45,55 +51,74 @@ class Containers(object):
         self.proc = None
 
     def create_launch_plan(self):
-        # copy launch plan into dest dir and modify config files
-        shutil.copytree(self.source_directory, self.launch_plan, symlinks=False)
-        # modify launch plan config
-        self._modify_recipes()
-        # TODO: expects exactly one execution engine -- will have to modify when multiple engines are supported
-        vm_count = self.engine_config.get('nodes')
-        pycc_count = self.engine_config.get('containers')
-        proc_count = self.engine_config.get('processes')
-        self._modify_counts(proc_count, pycc_count, vm_count)
+        os.makedirs(self.target_dir, mode=0755)
+        # copy and modify configuration of cloud resources
+        self._modify_cloud_config()
+
+        # copy and modify configuration of services and execution engines
+        self._modify_launch()
         # copy deploy.yml and modify
         self._modify_deploy()
+        self._generate_plan()
 
-    def _modify_recipes(self):
-        file = os.path.join(self.launch_plan, 'common', 'deps.conf')
-        cfg = ConfigParser.RawConfigParser()
-        cfg.read(file)
-        cfg.set('deps', 'dtdata_archive_url', self.recipes)
-        with open(file, 'w') as f:
-            cfg.write(f)
-
-    def _modify_counts(self, ion_procs, pycc_procs, vms):
-        # 2 fields in pd.json
-        pd_file = os.path.join(self.launch_plan, 'pd', 'pd.json')
-        with open(pd_file, 'r') as f:
-            data = json.load(f)
-        data['pyon']['run_config']['config']['processdispatcher']['engines']['default']['slots'] = ion_procs
-        data['pyon']['run_config']['config']['processdispatcher']['engines']['default']['base_need'] = vms
-        with open(pd_file, 'w') as f:
-            json.dump(data, f)
-        # 1 field in eeagent_pyon.yml
-        ee_file = os.path.join(self.launch_plan, 'dtrs-bootstrap', 'dt-bootstrap', 'dt', 'eeagent_pyon.yml')
-        with open(ee_file, 'r') as f:
+    def _modify_cloud_config(self):
+        """ copy template cloud config file and modify """
+        file = os.path.join(self.source_directory, self.config.get('containers.resource-config'))
+        with open(file, 'r') as f:
             data = yaml.load(f)
-        data['contextualization']['chef_config']['pyon']['run_config']['config']['eeagent']['slots'] = ion_procs
-        with open(ee_file, 'w') as f:
-            yaml.dump(data, f)
-        script = os.path.join(self.launch_plan, 'dtrs-bootstrap', 'prepare-tarball.sh')
-        code = subprocess.call(script, shell=True)
-        if code<0:
-            raise Exception('failed to execute ' + script)
+
+        # configure appropriately
+        data['iaas']['key'] = os.environ['EC2_ACCESS_KEY']
+        data['iaas']['secret'] = os.environ['EC2_SECRET_KEY']
+        data['iaas']['base-image'] = self.config.get('containers.image')
+        data['iaas']['base-allocation'] = self.config.get('containers.allocation')
+
+        data['rabbitmq']['host'] = self.config.get('rabbit.hostname')
+        data['rabbitmq']['username'] = self.config.get('rabbit.username')
+        data['rabbitmq']['password'] = self.config.get('rabbit.password')
+
+        data['couchdb']['host'] = self.config.get('couch.hostname')
+        data['couchdb']['username'] = self.config.get('couch.username')
+        data['couchdb']['password'] = self.config.get('couch.password')
+
+        data['graylog']['host'] = self.config.get('graylog.hostname')
+        if self.config.get('containers.recipes'):
+            if 'packages' not in data or not data['packages']:
+                data['packages'] = {}
+            data['packages']['dt_data'] = self.config.get('containers.recipes')
+
+        self.cloud_config = os.path.join(self.target_dir, 'resources.yml')
+        with open(self.cloud_config, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False)
+
+    def _modify_launch(self):
+        with open(self.config.get('containers.cloud-config'), 'r') as f:
+            data = yaml.load(f)
+
+        all_engines_config = self.config.get('containers.execution-engines')
+        for name,engine_config in self.config.get('containers.execution-engines').iteritems():
+            if name not in data['execution_engines']:
+                # add new execution engine
+                data['execution_engines'][name] = {}
+
+            cfg = data['execution_engines'][name]
+            for key in 'slots', 'base_need', 'replicas':
+                value = engine_config.get(key)
+                if value:
+                    cfg[key] = value
+
+        self.launch_config = os.path.join(self.target_dir, 'launch.yml')
+        with open(self.launch_config, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False)
 
     def _modify_deploy(self):
         # read template
-        src = self.engine_config.get('deploy-file')
+        src = self.config.get('services.deploy-file')
         with open(src, 'r') as f:
             data = yaml.load(f)
         # keep subset of existing apps from deploy file
-        config_list = self.engine_config.get('deploy-list')
-        config_apps = self.engine_config.get('deploy-apps')
+        config_list = self.config.get('services.deploy-list')
+        config_apps = self.config.get('services.deploy-apps')
         if config_list == '*' or (not config_list and not config_apps):
             pass # use all apps from config file (default)
         elif not config_list:
@@ -111,36 +136,51 @@ class Containers(object):
             for app in config_apps:
                 data['apps'].append(app.as_dict())
         # save
-        dest = os.path.join(self.launch_plan, 'deploy.yml')
-        with open(dest, 'w') as f:
-            yaml.dump(data, f)
-        # run rel2levels
-        # HACK: have to execute with PYTHONPATH that includes YAML, so pass whatever version I'm using
+        self.deploy_config = os.path.join(self.target_dir, 'deploy.yml')
+        with open(self.deploy_config, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False)
+
+        # OBSOLETE: no longer run rel2levels, now run generate-plan
+#        # run rel2levels
+#        # HACK: have to execute with PYTHONPATH that includes YAML, so pass whatever version I'm using
+#        yaml_dir = os.path.dirname(os.path.dirname(yaml.__file__))
+##        cmd = 'export PYTHONPATH=$PYTHONPATH:' + yaml_dir + ' ; ./rel2levels.py -c ' + self.cloud_config + ' deploy.yml -f --ignore-bootlevels > /dev/null 2>&1'
+#        cmd = 'export PYTHONPATH=$PYTHONPATH:' + yaml_dir + ' ; ./rel2levels.py -c ' + self.cloud_config + ' deploy.yml -f > /dev/null 2>&1'
+#        code = subprocess.call(cmd, shell=True, cwd=self.launch_plan)
+#        if code<0:
+#            raise Exception('failed to execute ' + cmd)
+
+    def _generate_plan(self):
         yaml_dir = os.path.dirname(os.path.dirname(yaml.__file__))
-#        cmd = 'export PYTHONPATH=$PYTHONPATH:' + yaml_dir + ' ; ./rel2levels.py -c ' + self.cloud_config + ' deploy.yml -f --ignore-bootlevels > /dev/null 2>&1'
-        cmd = 'export PYTHONPATH=$PYTHONPATH:' + yaml_dir + ' ; ./rel2levels.py -c ' + self.cloud_config + ' deploy.yml -f > /dev/null 2>&1'
-        code = subprocess.call(cmd, shell=True, cwd=self.launch_plan)
-        if code<0:
-            raise Exception('failed to execute ' + cmd)
+#        pathcmd = 'export PYTHONPATH=$PYTHONPATH:' + yaml_dir
+        cmd = 'bin/generate-plan --profile %s --rel %s --launch %s %s' % (
+                    os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
+                    os.path.abspath(self.launch_config), os.path.abspath(self.plan))
+        print '====>>> about to execute: ' + cmd
+        code = subprocess.call(cmd, shell=True, cwd=self.source_directory)
+        if code!=0:
+            raise ApeException('failed to execute ' + cmd)
 
     def launch_containers(self):
 #        home = os.environ['HOME']
 #        file = os.path.join(self.launch_plan, self.cloud_config)
-        cmd='cloudinitd boot ' + self.cloud_config + ' -n ' + self.name
-        print 'executing: ' + cmd
-        self.proc = subprocess.Popen(cmd, shell=True, cwd=self.launch_plan)
+        cmd='cloudinitd boot -vvv -n %s launch.conf' % self.name
+        print '====>>> about to execute: ' + cmd
+        self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
         # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
         self.proc.wait()
 
-        file = os.path.join(self.launch_plan, self.cloud_config)
-        self.connect_cloudinitd(config=file)
+        file = os.path.join(os.path.abspath(self.plan), 'launch.conf')
+        self.connect_cloudinitd()
 
-    def connect_cloudinitd(self, must_exist=False, config=None):
+    def connect_cloudinitd(self, must_exist=False):
+        config = os.path.join(os.path.abspath(self.plan), 'launch.conf')
         home = os.environ['HOME']
         db_file = os.path.join(home, '.cloudinitd', 'cloudinitd-'+self.name+'.db')
         print '*** ' + db_file + ' must exist? ' + repr(must_exist)
         if must_exist and not os.path.exists(db_file):
             raise ApeException('cannot reconnect to cloudinitd -- launch does not exist')
+        print "=====>>>> about to connect to " + config
         self.util = CloudInitD(home + '/.cloudinitd', config_file=config, db_name=self.name, boot=False, ready=False, fail_if_db_present=False)
 
     def wait_for_containers(self):

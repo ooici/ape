@@ -3,7 +3,7 @@
 
 from uuid import uuid4 as unique
 from ion.services.dm.utility.granule import RecordDictionaryTool
-from pyon.ion.transform import TransformDataProcess
+#from pyon.ion.transform import TransformDataProcess
 import logging as log
 
 from ape.common.types import ApeComponent, ApeException
@@ -80,11 +80,11 @@ class DataProductConsumer(ApeComponent):
             self.register_process_definition()
 
 
-class _NoOpTransform(TransformDataProcess):
-    def on_start(self):
-        log.debug('starting transform')
-    def process(self, granule):
-        pass
+#class _NoOpTransform(TransformDataProcess):
+#    def on_start(self):
+#        log.debug('starting transform')
+#    def process(self, granule):
+#        pass
 #        log.debug('ignoring message: ' + repr(granule))
 #        try:
 #            log.debug('granule dictionary: ' + repr(granule.__dict__))
@@ -96,16 +96,16 @@ class _NoOpTransform(TransformDataProcess):
 #            log.info('exception unpacking granule: ' + granule)
 #        pass
 
-class _LogValueTransform(TransformDataProcess):
-    def on_start(self):
-        super(TransformDataProcess,self).on_start()
-        log.debug('starting transform')
-    def process(self, granule):
-        tool = RecordDictionaryTool.load_from_granule(granule)
-        msg = ''
-        for (k,v) in tool.iteritems():
-            msg += '\n\t' + repr(k) + " => " + repr(v)
-        if msg:
-            log.debug('have granule with payload:' + msg)
-        else:
-            log.info('have empty granule')
+#class _LogValueTransform(TransformDataProcess):
+#    def on_start(self):
+#        super(TransformDataProcess,self).on_start()
+#        log.debug('starting transform')
+#    def process(self, granule):
+#        tool = RecordDictionaryTool.load_from_granule(granule)
+#        msg = ''
+#        for (k,v) in tool.iteritems():
+#            msg += '\n\t' + repr(k) + " => " + repr(v)
+#        if msg:
+#            log.debug('have granule with payload:' + msg)
+#        else:
+#            log.info('have empty granule')

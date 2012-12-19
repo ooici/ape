@@ -34,5 +34,5 @@ class ManualCouchCluster(ManualCluster):
     def __init__(self, config):
         super(ManualCouchCluster,self).__init__(config, KEY_PREFIX)
         os.environ['COUCHDB_HOST'] = self.get_hostname()
-        os.environ['COUCHDB_USERNAME'] = self.get_username()
-        os.environ['COUCHDB_PASSWORD'] = self.get_password()
+        os.environ['COUCHDB_USERNAME'] = self.get_username() or ""
+        os.environ['COUCHDB_PASSWORD'] = self.get_password() or ""
