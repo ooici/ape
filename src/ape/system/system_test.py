@@ -22,7 +22,20 @@ from ape.common.messages import  component_id, agent_id
 from ion.processes.bootstrap.ion_loader import TESTED_DOC, DEFAULT_CATEGORIES
 
 # simple communication with agents (ping, inventory, etc) will wait at least this long for responses
-MIN_WAIT_RESPONSE=5 #30
+MIN_WAIT_RESPONSE=30
+
+class PreloadListener(Listener):
+    results = {}
+    def on_message(self, message):
+        if isinstance(message.result, NotifyPreloadComplete):
+            self.results[message.result.id] = message.result
+
+    def clear_result(self, id):
+        del self.results[id]
+    def wait_for_result(self, id):
+        while id not in self.results:
+            time.sleep(2)
+        return self.results[id]
 
 class SystemTest(object):
 
@@ -57,7 +70,7 @@ class SystemTest(object):
     def start_components(self):
         """ start all components within the applications """
 #        init_timer = Timer("initialization")
-        self.preload_system(self.config, self.manager, self.system)
+        self.preload_system(self.config)
 #        init_timer.next_step("preload")
         self.devices = self.start_devices(self.config, self.manager, self.system)
 #        init_timer.next_step("devices")
@@ -86,6 +99,8 @@ class SystemTest(object):
         self.manager.add_listener(self.speedometer)
         self.inventory = TimedInventoryListener()
         self.manager.add_listener(self.inventory)
+        self.preload_listener = PreloadListener()
+        self.manager.add_listener(self.preload_listener)
 
     def _create_manager(self):
 #        # TODO: if have specific ape-rabbit config, use it
@@ -119,27 +134,22 @@ class SystemTest(object):
 
     ############################################################################################
 
-    def preload_system(self, config, manager, system):
+    def preload_system(self, config):
         """ perform DB preload as defined in config file
 
         should only be called once -- it starts a component called 'loader'
         have to refactor to make sure it doesn't create a second loader if we want to be able to call multiple times
         """
-#        import pprint
-#        pprint.pprint(config.as_dict())
-#        obj = config.get("preload")
-#        print 'preload objects:::'
-#        for o in obj:
-#            pprint.pprint(o.as_dict())
-#        print ':::preload objects'
-
         preload_configs = config.get("preload")
         if not preload_configs:
+            print 'no preload config found'
             return
 
         some_agent = self.get_agents()[0]
+        print 'starting preload component on %s' % some_agent
         self.manager.send_request(AddComponent(Preloader('loader', None, None)), agent_filter=agent_id(some_agent), component_filter=component_id('AGENT'))
         for preload_config in preload_configs:
+
             if preload_config.get("path") or preload_config.get("scenarios"):
                 self._preload_path(preload_config)
             elif preload_config.get("range"):
@@ -152,18 +162,22 @@ class SystemTest(object):
         name = config.get("name")
         path = config.get("path") or TESTED_DOC
         scenarios = config.get("scenarios")
-        req = PerformPreload(name, PathConfiguration(path=path, scenarios=scenarios))
-        self.manager.send_request(req, component_filter=component_id('loader'))
+        self._preload(name, PathConfiguration(path=path, scenarios=scenarios))
 
     def _preload_template(self, config):
         name = config.get("name")
-
         range_str = config.get("range").split('-')
         range = xrange(int(range_str[0]), int(range_str[1])+1)
         templates = [ template.as_dict() for template in config.get('templates') ]
+        self._preload(name, TemplateConfiguration(range=range, templates=templates))
 
-        req = PerformPreload(name, TemplateConfiguration(range=range, templates=templates))
+    def _preload(self, name, loader_config):
+        print 'starting preload: ' + name
+        req = PerformPreload(name, loader_config)
         self.manager.send_request(req, component_filter=component_id('loader'))
+        result = self.preload_listener.wait_for_result(name)
+        if not result.success:
+            raise ApeException('preload failed: %s' % result.message)
 
     def start_devices(self, config, manager, system):
         """ start all devices defined in config file """

@@ -166,9 +166,11 @@ class Containers(object):
 #        file = os.path.join(self.launch_plan, self.cloud_config)
         cmd='cloudinitd boot -vvv -n %s launch.conf' % self.name
         print '====>>> about to execute: ' + cmd
-        self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
+
         # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
-        self.proc.wait()
+        #self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
+        #status = self.proc.wait()
+        subprocess.check_call(cmd, shell=True, cwd=self.plan)
 
         file = os.path.join(os.path.abspath(self.plan), 'launch.conf')
         self.connect_cloudinitd()

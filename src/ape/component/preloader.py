@@ -69,14 +69,14 @@ class _PreloadBaseTask(object):
         self.loader.rpc_sender = process
         self.loader.CFG = process.CFG
 
-        self.loader.obj_classes = {}     # Cache of class for object types
-        self.loader.resource_ids = {}    # Holds a mapping of preload IDs to internal resource ids
-        self.loader.resource_objs = {}   # Holds a mapping of preload IDs to the actual resource objects
-        self.loader.existing_resources = None
-        self.loader.unknown_fields = {} # track unknown fields so we only warn once
-        self.loader.constraint_defs = {} # alias -> value for refs, since not stored in DB
-        self.loader.contact_defs = {} # alias -> value for refs, since not stored in DB
-        self.loader.stream_config = {} # name -> obj for StreamConfiguration objects, used by *AgentInstance
+#        self.loader.obj_classes = {}     # Cache of class for object types
+#        self.loader.resource_ids = {}    # Holds a mapping of preload IDs to internal resource ids
+#        self.loader.resource_objs = {}   # Holds a mapping of preload IDs to the actual resource objects
+#        self.loader.existing_resources = None
+#        self.loader.unknown_fields = {} # track unknown fields so we only warn once
+#        self.loader.constraint_defs = {} # alias -> value for refs, since not stored in DB
+#        self.loader.contact_defs = {} # alias -> value for refs, since not stored in DB
+#        self.loader.stream_config = {} # name -> obj for StreamConfiguration objects, used by *AgentInstance
 
         self.success = False
 
