@@ -3,12 +3,13 @@ instrument controller component
 
 capable of creating, initializing and managing access to an instrument
 """
-from ape.common.requests import OperationResult, getResult
+from ape.common.requests import OperationResult, getResult, ChangeConfiguration
 from ape.common.types import ApeComponent, ApeException, ApeRequest
 from ape.component.gateway_client import ServiceApi
 from pyon.public import PRED, RT
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from pyon.core.exception import IonException
+
 
 class GetInstrumentNames(ApeRequest): pass
 class GetInstrumentId(ApeRequest):
@@ -35,6 +36,9 @@ class InstrumentController(ApeComponent):
             self.start_device(request.id)
         elif isinstance(request, GetDataProduct):
             self.report(getResult(self.find_data_product, request.id))
+        elif isinstance(request, ChangeConfiguration):
+            # changes ServiceApi hostname, port
+            request.configuration.apply()
 
     def _get_resource_registry(self):
         if not self._resource_registry:

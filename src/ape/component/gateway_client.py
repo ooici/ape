@@ -35,6 +35,16 @@ AGENT_REQUEST_TEMPLATE = {
     }
 }
 
+class GatewayConfiguration(object):
+    def __init__(self, hostname='localhost', port=5000):
+        self.hostname = hostname
+        self.port = port
+    def apply(self):
+        global GATEWAY_HOST
+        GATEWAY_HOST = self.hostname
+        global GATEWAY_PORT
+        GATEWAY_PORT = self.port
+
 class ServiceApi(object):
 
     # @staticmethod
