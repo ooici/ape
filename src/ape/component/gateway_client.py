@@ -8,6 +8,9 @@ derived URLs are now created dynamically so host and port can be changed on the 
 """
 
 import requests, json, time
+
+from ooi.logging import log
+
 #from flask import session
 session = {}
 GATEWAY_HOST='localhost'
@@ -821,6 +824,10 @@ def service_gateway_agent_request(agent_id, operation_name, params={}):
         resp = json.loads(resp.content)
 
         if type(resp) == dict:
-            return resp['data']['GatewayResponse']
+            if 'data' in resp and 'GatewayResponse' in resp['data']:
+                return resp['data']['GatewayResponse']
+            else:
+                import pprint
+                log.error('dictionary did not have expected keys: %s', pprint.pformat(resp))
         elif type(resp) == list:
-            return resp['data']['GatewayResponse'][0]
+            return resp[0]['data']['GatewayResponse']
