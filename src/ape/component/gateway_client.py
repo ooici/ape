@@ -21,6 +21,8 @@ def get_service_url():
 def get_agent_url():
     return 'http://%s:%d/ion-agent' % (GATEWAY_HOST, GATEWAY_PORT)
 
+AGENT_ID_CACHE = {}
+
 SERVICE_REQUEST_TEMPLATE = {
     'serviceRequest': {
         'serviceName': '',
@@ -164,14 +166,23 @@ class ServiceApi(object):
         return resources
 
     @staticmethod
+    def _get_agent_id(device_id):
+        global AGENT_ID_CACHE
+        if device_id in AGENT_ID_CACHE:
+            return AGENT_ID_CACHE[device_id]
+        agent_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate':'hasAgentInstance'})[0][0]['_id']
+        AGENT_ID_CACHE[device_id] = agent_id
+        return agent_id
+
+    @staticmethod
     def instrument_agent_start(instrument_device_id):
-        instrument_agent_instance_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate':'hasAgentInstance'})[0][0]['_id']
+        instrument_agent_instance_id = ServiceApi._get_agent_id(instrument_device_id)
         agent_request = service_gateway_get('instrument_management', 'start_instrument_agent_instance', params={'instrument_agent_instance_id': str(instrument_agent_instance_id)})
         return agent_request
 
     @staticmethod
     def instrument_agent_stop(instrument_device_id):
-        instrument_agent_instance_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate':'hasAgentInstance'})[0][0]['_id']
+        instrument_agent_instance_id = ServiceApi._get_agent_id(instrument_device_id)
         agent_request = service_gateway_get('instrument_management', 'stop_instrument_agent_instance', params={'instrument_agent_instance_id': str(instrument_agent_instance_id)})
         return agent_request
 
@@ -816,7 +827,8 @@ def build_agent_request(agent_id, operation_name, params={}):
 
     return url, data
 
-def service_gateway_agent_request(agent_id, operation_name, params={}):
+def service_gateway_agent_request(device_id, operation_name, params={}):
+    agent_id = ServiceApi._get_agent_id(device_id)
     url, data = build_agent_request(agent_id, operation_name, params)
     resp = requests.post(url, data)
 
