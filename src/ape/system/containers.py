@@ -96,7 +96,7 @@ class Containers(object):
             data = yaml.load(f)
 
         all_engines_config = self.config.get('containers.execution-engines')
-        for name,engine_config in self.config.get('containers.execution-engines').iteritems():
+        for name,engine_config in all_engines_config.iteritems():
             if name not in data['execution_engines']:
                 # add new execution engine
                 data['execution_engines'][name] = {}
@@ -206,3 +206,35 @@ class Containers(object):
                 vars['broker_username'] = svc.get_attr_from_bag("rabbitmq_username")
                 vars['broker_password'] = svc.get_attr_from_bag("rabbitmq_password")
         return vars
+
+    def get_process_list(self):
+        cmd='ceictl -n %s process list' % self.name
+        print '====>>> about to execute: ' + cmd
+
+        # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
+        #self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
+        #status = self.proc.wait()
+        processes = [ ]
+        current = { }
+        lines = iter(subprocess.check_output(cmd, shell=True, cwd=self.plan).split('\n'))
+        try:
+            while True:
+                line = lines.next()
+                if line:
+                    fields = line.split('=')
+                    name = fields[0].strip()
+                    value = fields[1].strip()
+                    if name=='Process ID':
+                        if current:
+                            processes.append(current)
+                            current = { }
+                    elif name=='Process Name':
+                        idlen = len(value.split('-')[-1])
+                        type = value[0:-idlen-1]
+                        current['type'] = type
+                    current[name] = value
+        except StopIteration:
+            pass
+        return processes
+
+

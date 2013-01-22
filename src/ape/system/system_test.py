@@ -17,9 +17,15 @@ from ape.common.messages import  component_id
 from ape.common.requests import InventoryResult
 from ape.common.types import ApeException
 from ape.component.preloader import Preloader, PerformPreload, NotifyPreloadComplete, PathConfiguration, TemplateConfiguration
+from ape.component.gateway_client import GatewayConfiguration
 from ape.common.requests import PingRequest, AddComponent
 from ape.common.messages import  component_id, agent_id
 from ion.processes.bootstrap.ion_loader import TESTED_DOC, DEFAULT_CATEGORIES
+import logging
+from ape.component.instrument_controller import *
+from gevent.event import AsyncResult
+
+log = logging.getLogger('ape.system.system_test')
 
 # simple communication with agents (ping, inventory, etc) will wait at least this long for responses
 MIN_WAIT_RESPONSE=30
@@ -36,6 +42,21 @@ class PreloadListener(Listener):
         while id not in self.results:
             time.sleep(2)
         return self.results[id]
+
+class AnswerListener(Listener):
+    next_result = None
+    def on_message(self, message):
+        if isinstance(message.result, OperationResult):
+            self.handle_message(message.result)
+    def expect_message(self):
+        if self.next_result:
+            raise ApeException('already waiting for a result!')
+        self.next_result = AsyncResult()
+        return self.next_result
+    def handle_message(self, result):
+        if self.next_result:
+            self.next_result.set(result)
+            self.next_result = None
 
 class SystemTest(object):
 
@@ -67,10 +88,12 @@ class SystemTest(object):
         self.system = reconnect_containers(config=self.config, couch=self.couch, rabbit=self.rabbit, graylog=self.graylog, elasticsearch=self.es)
         self._init_manager()
 
+    def init_system(self):
+        self.preload_system(self.config)
+
     def start_components(self):
         """ start all components within the applications """
 #        init_timer = Timer("initialization")
-        self.preload_system(self.config)
 #        init_timer.next_step("preload")
         self.devices = self.start_devices(self.config, self.manager, self.system)
 #        init_timer.next_step("devices")
@@ -101,6 +124,9 @@ class SystemTest(object):
         self.manager.add_listener(self.inventory)
         self.preload_listener = PreloadListener()
         self.manager.add_listener(self.preload_listener)
+        self.answer_listener = AnswerListener()
+        self.manager.add_listener(self.answer_listener)
+
 
     def _create_manager(self):
 #        # TODO: if have specific ape-rabbit config, use it
@@ -142,21 +168,36 @@ class SystemTest(object):
         """
         preload_configs = config.get("preload")
         if not preload_configs:
-            print 'no preload config found'
+            log.warn('no preload config found')
             return
 
         some_agent = self.get_agents()[0]
-        print 'starting preload component on %s' % some_agent
+        log.info('starting preload component on %s' % some_agent)
         self.manager.send_request(AddComponent(Preloader('loader', None, None)), agent_filter=agent_id(some_agent), component_filter=component_id('AGENT'))
         for preload_config in preload_configs:
-
             if preload_config.get("path") or preload_config.get("scenarios"):
                 self._preload_path(preload_config)
-            elif preload_config.get("range"):
-                self._preload_template(preload_config)
-            else:
-                name = preload_config.get("name") or "<no name>"
-                raise ApeException("preload configuration " + name + " has no path, scenarios or range specified")
+#            elif preload_config.get("range"):
+#                self._preload_template(preload_config)
+#            else:
+#                name = preload_config.get("name") or "<no name>"
+#                raise ApeException("preload configuration " + name + " has no path, scenarios or range specified")
+
+    def get_preload_template(self):
+        preload_configs = self.config.get("preload")
+        for preload_config in preload_configs:
+            if preload_config.get("range"):
+                return preload_config
+
+    def get_preload_range(self, config):
+        range_str = config.get("range").split('-')
+        return xrange(int(range_str[0]), int(range_str[1])+1)
+
+    def init_device(self, config, n):
+        log.info('executing _preload_template: %d', n)
+        self._preload_template(config, xrange(n,n+1))
+        log.info('executing start_devices: %d', n)
+        self.start_devices(self.config, self.manager, self.system, nrange=xrange(n,n+1))
 
     def _preload_path(self, config):
         name = config.get("name")
@@ -164,24 +205,66 @@ class SystemTest(object):
         scenarios = config.get("scenarios")
         self._preload(name, PathConfiguration(path=path, scenarios=scenarios))
 
-    def _preload_template(self, config):
+    def _preload_template(self, config, nrange=None):
         name = config.get("name")
         range_str = config.get("range").split('-')
-        range = xrange(int(range_str[0]), int(range_str[1])+1)
+        if not nrange:
+            nrange = xrange(int(range_str[0]), int(range_str[1])+1)
         templates = [ template.as_dict() for template in config.get('templates') ]
-        self._preload(name, TemplateConfiguration(range=range, templates=templates))
+        self._preload(name, TemplateConfiguration(range=nrange, templates=templates))
 
     def _preload(self, name, loader_config):
-        print 'starting preload: ' + name
+        log.info('starting preload: ' + name)
         req = PerformPreload(name, loader_config)
         self.manager.send_request(req, component_filter=component_id('loader'))
         result = self.preload_listener.wait_for_result(name)
         if not result.success:
             raise ApeException('preload failed: %s' % result.message)
 
-    def start_devices(self, config, manager, system):
+    def find_gateway(self):
+        procs = self.system.get_process_list()
+        for p in procs:
+            if p['type']=='service_gateway':
+                return p['Hostname']
+        raise ApeException('no service gateway found in running processes')
+
+    def start_devices(self, config, manager, system, nrange=None):
         """ start all devices defined in config file """
-        pass
+        range_str = config.get("start-devices.range").split('-')
+        template = config.get("start-devices.devices")
+        delay = config.get("start-devices.sleep-time")
+        if template:
+            log.info("starting devices using template: %s", template)
+        else:
+            log.warn("no devices indicated for starting")
+            return
+
+        some_agent = self.get_agents()[0]
+        log.info('starting instrument controller component on %s' % some_agent)
+        ims = InstrumentController('device_controller', None, None)
+        manager.send_request(AddComponent(ims), agent_filter=agent_id(some_agent), component_filter=component_id('AGENT'))
+
+        gateway = self.find_gateway()
+        gw_config = GatewayConfiguration(hostname=gateway)
+        manager.send_request(ChangeConfiguration(gw_config), agent_filter=agent_id(some_agent), component_filter=component_id('device_controller'))
+        time.sleep(5)
+
+        if not nrange:
+            nrange = xrange(int(range_str[0]), int(range_str[1])+1)
+
+        for n in nrange:
+            name = template % n
+            log.info("starting instrument %d at %s", n, time.ctime())
+            future = self.answer_listener.expect_message()
+            manager.send_request(GetInstrumentId(name), agent_filter=agent_id(some_agent), component_filter=component_id('device_controller'))
+            future.wait(timeout=60)
+            msg = future.get()
+            if msg.exception:
+                raise msg.exception
+            device_id = msg.result
+            manager.send_request(StartDevice(device_id), component_filter=component_id('device_controller'))
+            # give some time for things to stabilize
+            time.sleep(delay)
 
     def start_transforms(self, config, manager, system, devices):
         """

@@ -170,7 +170,7 @@ class ServiceApi(object):
         global AGENT_ID_CACHE
         if device_id in AGENT_ID_CACHE:
             return AGENT_ID_CACHE[device_id]
-        agent_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate':'hasAgentInstance'})[0][0]['_id']
+        agent_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': device_id, 'predicate':'hasAgentInstance'})[0][0]['_id']
         AGENT_ID_CACHE[device_id] = agent_id
         return agent_id
 
