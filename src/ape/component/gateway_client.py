@@ -828,8 +828,8 @@ def build_agent_request(agent_id, operation_name, params={}):
     return url, data
 
 def service_gateway_agent_request(device_id, operation_name, params={}):
-    agent_id = ServiceApi._get_agent_id(device_id)
-    url, data = build_agent_request(agent_id, operation_name, params)
+#    agent_id = ServiceApi._get_agent_id(device_id)
+    url, data = build_agent_request(device_id, operation_name, params)
     resp = requests.post(url, data)
 
     if resp.status_code == 200:
