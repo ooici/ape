@@ -170,7 +170,9 @@ class ServiceApi(object):
         global AGENT_ID_CACHE
         if device_id in AGENT_ID_CACHE:
             return AGENT_ID_CACHE[device_id]
-        agent_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': device_id, 'predicate':'hasAgentInstance'})[0][0]['_id']
+        result = service_gateway_get('resource_registry', 'find_objects', params={'subject': device_id, 'predicate':'hasAgentInstance'})
+        log.info("have agent id result: %r", result)
+        agent_id = result[0][0]['_id']
         AGENT_ID_CACHE[device_id] = agent_id
         return agent_id
 
@@ -195,7 +197,7 @@ class ServiceApi(object):
 
     @staticmethod
     def instrument_execute_agent(instrument_device_id, agent_command):
-        agent_op = "execute_agent"
+        agent_op = "execute_agent" if agent_command[0]=='R' else "execute_resource"
         params = {"command": {"type_": "AgentCommand", "command": agent_command}}
         agent_response = service_gateway_agent_request(instrument_device_id, agent_op, params)
         return agent_response

@@ -9,7 +9,8 @@ from ape.component.gateway_client import ServiceApi
 from pyon.public import PRED, RT
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 from pyon.core.exception import IonException
-
+import time
+from ooi.logging import log
 
 class GetInstrumentNames(ApeRequest): pass
 class GetInstrumentId(ApeRequest):
@@ -57,6 +58,7 @@ class InstrumentController(ApeComponent):
 
     def find_instrument(self, name):
         """ determine id of device with given name """
+        log.debug("searching for instrument with name: %s", name)
         instruments = self.list_instruments()
         instrument_attributes = None
         for i in instruments:
@@ -74,20 +76,22 @@ class InstrumentController(ApeComponent):
 
     def start_device(self, device_id):
         """ start necessary drivers and agents for instrument """
-        print 'starting agent'
+
+        log.debug('starting agent for device %s', device_id)
         response = ServiceApi.instrument_agent_start(device_id)
+        time.sleep(30)
         # if response is success...
-        print 'commanding agent: initialize'
-        response = ServiceApi.instrument_execute_agent(device_id, 'initialize')
+        log.debug('commanding agent: initialize device %s', device_id)
+        response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_INITIALIZE')
         # if response is success...
-        print 'commanding agent: go_active'
-        response = ServiceApi.instrument_execute_agent(device_id, 'go_active')
+        log.debug('commanding agent: go_active device %s', device_id)
+        response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_GO_ACTIVE')
         # if response is success...
-        print 'commanding agent: run'
-        response = ServiceApi.instrument_execute_agent(device_id, 'run')
+        log.debug('commanding agent: run device %s', device_id)
+        response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_RUN')
         # if response is success...
-        print 'commanding agent: go_streaming'
-        response = ServiceApi.instrument_execute_agent(device_id, 'go_streaming')
+        log.debug('commanding agent: go_streaming device %s', device_id)
+        response = ServiceApi.instrument_execute_agent(device_id, 'DRIVER_EVENT_START_AUTOSAMPLE')
 
     def find_data_product(self, device_id):
         rr = self._get_resource_registry()
