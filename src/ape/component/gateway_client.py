@@ -178,6 +178,13 @@ class ServiceApi(object):
     def instrument_agent_start(instrument_device_id):
         instrument_agent_instance_id = ServiceApi._get_agent_id(instrument_device_id)
         agent_request = service_gateway_get('instrument_management', 'start_instrument_agent_instance', params={'instrument_agent_instance_id': str(instrument_agent_instance_id)})
+#        #wait for start
+#        instance_obj = self.imsclient.read_instrument_agent_instance(oldInstAgentInstance_id)
+#        gate = ProcessStateGate(self.processdispatchclient.read_process,
+#            instance_obj.agent_process_id,
+#            ProcessStateEnum.RUNNING)
+#        self.assertTrue(gate.await(30), "The instrument agent instance (%s) did not spawn in 30 seconds" %
+#                                        instance_obj.agent_process_id)
         return agent_request
 
     @staticmethod
