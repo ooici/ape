@@ -844,12 +844,12 @@ def service_gateway_agent_request(device_id, operation_name, params={}):
     if resp.status_code == 200:
         resp = json.loads(resp.content)
         return _extract_response(resp)
+    else:
+        raise ApeException('HTTP error %d from service gateway'%resp.status_code)
 
 def _extract_response(resp):
     ## handle HTTP error
-    if resp.status_code!=200:
-        raise ApeException('HTTP error %d from service gateway'%resp.status_code)
-    elif type(resp) == dict:
+    if type(resp) == dict:
         ## malformed response
         if 'data' not in resp:
             log.error('data not found in response:\n%s', pprint.pformat(resp))

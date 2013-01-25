@@ -100,6 +100,7 @@ class InstrumentController(ApeComponent):
 
             self.report(OperationResult(result='device %s started'%device_id))
         except Exception,e:
+            log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
             self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
 
     def find_data_product(self, device_id):
