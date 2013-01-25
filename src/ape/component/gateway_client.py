@@ -8,7 +8,8 @@ derived URLs are now created dynamically so host and port can be changed on the 
 """
 
 import requests, json, time
-
+import pprint
+from ape.common.types import ApeException
 from ooi.logging import log
 
 #from flask import session
@@ -840,15 +841,30 @@ def service_gateway_agent_request(device_id, operation_name, params={}):
 #    agent_id = ServiceApi._get_agent_id(device_id)
     url, data = build_agent_request(device_id, operation_name, params)
     resp = requests.post(url, data)
-
     if resp.status_code == 200:
         resp = json.loads(resp.content)
+        return _extract_response(resp)
 
-        if type(resp) == dict:
-            if 'data' in resp and 'GatewayResponse' in resp['data']:
-                return resp['data']['GatewayResponse']
-            else:
-                import pprint
-                log.error('dictionary did not have expected keys: %s', pprint.pformat(resp))
-        elif type(resp) == list:
-            return resp[0]['data']['GatewayResponse']
+def _extract_response(resp):
+    ## handle HTTP error
+    if resp.status_code!=200:
+        raise ApeException('HTTP error %d from service gateway'%resp.status_code)
+    elif type(resp) == dict:
+        ## malformed response
+        if 'data' not in resp:
+            log.error('data not found in response:\n%s', pprint.pformat(resp))
+            raise ApeException('gateway failure response: %r'%resp)
+        ## successful response
+        elif 'GatewayResponse' in resp['data']:
+            return resp['data']['GatewayResponse']
+        ## failure with exception trace
+        elif 'GatewayError' in resp['data'] and 'Trace' in resp['data']['GatewayError']:
+            log.error('gateway error response:\n%s', resp['data']['GatewayError']['Trace'])
+            raise ApeException('gateway failure response: %r'%resp)
+        ## some other error resonse
+        else:
+            log.error('GatewayResponse not found in data: %s', pprint.pformat(resp['data']))
+            raise ApeException('gateway failure response: %r'%resp)
+    ## list of responses
+    elif type(resp) == list:
+        return [ _extract_response(item) for item in resp ]

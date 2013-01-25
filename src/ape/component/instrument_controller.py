@@ -76,22 +76,31 @@ class InstrumentController(ApeComponent):
 
     def start_device(self, device_id):
         """ start necessary drivers and agents for instrument """
+        try:
+            step = "starting agent"
+            log.debug('starting agent for device %s', device_id)
+            response = ServiceApi.instrument_agent_start(device_id)                                        # launches instrument agent (not yet driver)
+            time.sleep(30)
+            # if response is success...
+            step = "initialize agent (start driver)"
+            log.debug('commanding agent: initialize device %s', device_id)
+            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_INITIALIZE')   # cause agent to start driver process
+            # if response is success...
+            step = "connect agent to device"
+            log.debug('commanding agent: go_active device %s', device_id)
+            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_GO_ACTIVE')    # cause driver to connect to device
+            # if response is success...
+            step = "put device into command mode"
+            log.debug('commanding agent: run device %s', device_id)
+            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_RUN')          # put agent/driver into command mode
+            # if response is success...
+            step = "command device to begin streaming"
+            log.debug('commanding agent: go_streaming device %s', device_id)
+            response = ServiceApi.instrument_execute_agent(device_id, 'DRIVER_EVENT_START_AUTOSAMPLE')     # put into streaming mode
 
-        log.debug('starting agent for device %s', device_id)
-        response = ServiceApi.instrument_agent_start(device_id)
-        time.sleep(30)
-        # if response is success...
-        log.debug('commanding agent: initialize device %s', device_id)
-        response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_INITIALIZE')
-        # if response is success...
-        log.debug('commanding agent: go_active device %s', device_id)
-        response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_GO_ACTIVE')
-        # if response is success...
-        log.debug('commanding agent: run device %s', device_id)
-        response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_RUN')
-        # if response is success...
-        log.debug('commanding agent: go_streaming device %s', device_id)
-        response = ServiceApi.instrument_execute_agent(device_id, 'DRIVER_EVENT_START_AUTOSAMPLE')
+            self.report(OperationResult(result='device %s started'%device_id))
+        except Exception,e:
+            self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
 
     def find_data_product(self, device_id):
         rr = self._get_resource_registry()
