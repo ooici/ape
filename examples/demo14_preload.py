@@ -41,7 +41,7 @@ def main():
 
     # first preload a scenario from the normal google doc
     #
-    doc = PathConfiguration(path=TESTED_DOC, scenarios=["BASE"])
+    doc = PathConfiguration(path=TESTED_DOC, scenarios=["BASE,BETA"])
     req = PerformPreload("goog", doc)
     m.send_request(AddComponent(Preloader('loader', None, None)), component_filter=component_id('AGENT'))
     m.send_request(req, component_filter=component_id('loader'))

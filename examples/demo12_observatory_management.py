@@ -8,8 +8,8 @@ import gevent.monkey
 from threading import Lock
 import time
 from ape.component.sandbag import ResourceWaster
-from ape.component.transform import TransformComponent
-from ape.component.transform import Configuration as TransformConfiguration
+#from ape.component.transform import TransformComponent
+#from ape.component.transform import Configuration as TransformConfiguration
 
 gevent.monkey.patch_all(aggressive=False)
 
@@ -119,7 +119,7 @@ def main():
     ans = AnswerListener()
     perf = PerformanceListener()
 #    m = SimpleManager()
-    m = SimpleManager(broker_hostname='gum')
+    m = SimpleManager(broker_hostname='localhost')
     m.add_listener(ans)
     m.add_listener(perf)
 
@@ -132,55 +132,64 @@ def main():
     m.send_request(AddComponent(ims), component_filter=component_id('AGENT'))
 
     # create consumer of data products
-    transform_config = TransformConfiguration(transform_function=None) #(lambda input: dict(value=sum(input['value']))))
-    transform_config.stats_interval = 60
-    transform_config.report_stats = True
-    transform = TransformComponent('consumer', None, transform_config)
+#    transform_config = TransformConfiguration(transform_function=None) #(lambda input: dict(value=sum(input['value']))))
+#    transform_config.stats_interval = 60
+#    transform_config.report_stats = True
+#    transform = TransformComponent('consumer', None, transform_config)
 
     # get device IDs
     count=0
-    for x in xrange(50):
-        for dev in DEVICE_INFO:
-            count+=1
-            future = ans.expect_message()
-            m.send_request(GetInstrumentId(dev[0]), component_filter=component_id('device_controller'))
-            future.wait(timeout=30)
-            msg = future.get()
-            if msg.exception:
-                raise msg.exception
-            device_id = msg.result
-            dev.append(device_id)
-            transform_config.add_input(dev[1])
-            transform_config.add_input(dev[2])
-            print 'have id for device %s: %s' % (dev[0],device_id)
+#    for x in xrange(50):
+#    for dev in DEVICE_INFO:
+#        count+=1
+#        future = ans.expect_message()
+#        m.send_request(GetInstrumentId(dev[0]), component_filter=component_id('device_controller'))
+#        future.wait(timeout=30)
+#        msg = future.get()
+#        if msg.exception:
+#            raise msg.exception
+#        device_id = msg.result
+#        dev.append(device_id)
+#        transform_config.add_input(dev[1])
+#        transform_config.add_input(dev[2])
+#        print 'have id for device %s: %s' % (dev[0],device_id)
 #    m.send_request(AddComponent(transform), component_filter=component_id('AGENT'))
 #
 #    # start devices
 #    count=0
 
+    future = ans.expect_message()
+    m.send_request(GetInstrumentId("CTD Simulator end to end R2 testing"), component_filter=component_id('device_controller'))
+    msg = future.get()
+    if msg.exception:
+        raise msg.exception
+    id = msg.result
 
-    sleep(3000)
-    for count in xrange(len(DEVICE_INFO)):
-        # alternate first 20 (port 4001) with last 20 (port 4002)
-        index = count #(20 if count%2==0 else 0) + int(count/2)
-        dev = DEVICE_INFO[index]
+    print 'device id %s' % id
+    m.send_request(StartDevice(id), component_filter=component_id('device_controller'))
 
-        m.send_request(StartDevice(dev[3]), component_filter=component_id('device_controller'))
-        print 'starting device #' + str(count) + ': ' +dev[0]
-        sleep(30)
-        print 'device has been started'
-
-        # log results as they arrive for a while
-        wait_time=60 if count<QUICK_LOAD_DEVICES else 300
-        end_time = time.time()+wait_time
-        wait_interval=10 if count<QUICK_LOAD_DEVICES else 60
-        while time.time()<end_time:
-            now = time.localtime(time.time())
-            values = perf.get_rate()
-            print '%s: messages per minute: %f'%(time.asctime(now),values[1]*60/transform_config.stats_interval)
-            sleep(wait_interval)
-
-    sleep(1000)
+#    sleep(3000)
+#    for count in xrange(len(DEVICE_INFO)):
+#        # alternate first 20 (port 4001) with last 20 (port 4002)
+#        index = count #(20 if count%2==0 else 0) + int(count/2)
+#        dev = DEVICE_INFO[index]
+#
+#        m.send_request(StartDevice(dev[3]), component_filter=component_id('device_controller'))
+#        print 'starting device #' + str(count) + ': ' +dev[0]
+#        sleep(30)
+#        print 'device has been started'
+#
+#        # log results as they arrive for a while
+#        wait_time=60 if count<QUICK_LOAD_DEVICES else 300
+#        end_time = time.time()+wait_time
+#        wait_interval=10 if count<QUICK_LOAD_DEVICES else 60
+#        while time.time()<end_time:
+#            now = time.localtime(time.time())
+#            values = perf.get_rate()
+#            print '%s: messages per minute: %f'%(time.asctime(now),values[1]*60/transform_config.stats_interval)
+#            sleep(wait_interval)
+#
+#    sleep(1000)
         # get data product
 #    future = ans.expect_message()
 #    m.send_request(GetDataProduct(device_id), component_filter=component_id('device_controller'))

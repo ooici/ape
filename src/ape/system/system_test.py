@@ -63,6 +63,8 @@ class SystemTest(object):
     def __init__(self, config):
         """ create test with system configuration """
         self.config = config
+        self.controller_agent = None
+        self.system = None
 
     def launch_system(self):
         """ bring up all VMs and applications """
@@ -83,10 +85,10 @@ class SystemTest(object):
     def reconnect_system(self):
         self.couch = reconnect_couch(self.config)
         self.rabbit = reconnect_rabbit(self.config)
+        self._init_manager()
         self.es = reconnect_elasticsearch(self.config)
         self.graylog = reconnect_graylog(self.config)
         self.system = reconnect_containers(config=self.config, couch=self.couch, rabbit=self.rabbit, graylog=self.graylog, elasticsearch=self.es)
-        self._init_manager()
 
     def init_system(self):
         self.preload_system(self.config)
@@ -95,7 +97,7 @@ class SystemTest(object):
         """ start all components within the applications """
 #        init_timer = Timer("initialization")
 #        init_timer.next_step("preload")
-        self.devices = self.start_devices(self.config, self.manager, self.system)
+        self.devices = self.start_devices(self.config, self.manager)
 #        init_timer.next_step("devices")
         self.transforms = self.start_transforms(self.config, self.manager, self.system, self.devices)
 #        init_timer.next_step("transforms")
@@ -197,7 +199,7 @@ class SystemTest(object):
         log.info('executing _preload_template: %d', n)
         self._preload_template(config, xrange(n,n+1))
         log.info('executing start_devices: %d', n)
-        self.start_devices(self.config, self.manager, self.system, nrange=xrange(n,n+1))
+        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1))
 
     def _preload_path(self, config):
         name = config.get("name")
@@ -222,13 +224,23 @@ class SystemTest(object):
             raise ApeException('preload failed: %s' % result.message)
 
     def find_gateway(self):
+        if not self.system:
+            return 'localhost'
         procs = self.system.get_process_list()
         for p in procs:
             if p['type']=='service_gateway':
                 return p['Hostname']
         raise ApeException('no service gateway found in running processes')
 
-    def start_devices(self, config, manager, system, nrange=None):
+    def _get_controller_agent(self, manager):
+        if not self.controller_agent:
+            self.controller_agent = self.get_agents()[0]
+            log.info('starting instrument controller component on %s' % self.controller_agent)
+            ims = InstrumentController('device_controller', None, None)
+            manager.send_request(AddComponent(ims), agent_filter=agent_id(self.controller_agent), component_filter=component_id('AGENT'))
+        return self.controller_agent
+
+    def start_devices(self, config, manager, nrange=None):
         """ start all devices defined in config file """
         range_str = config.get("start-devices.range").split('-')
         template = config.get("start-devices.devices")
@@ -239,11 +251,7 @@ class SystemTest(object):
             log.warn("no devices indicated for starting")
             return
 
-        some_agent = self.get_agents()[0]
-        log.info('starting instrument controller component on %s' % some_agent)
-        ims = InstrumentController('device_controller', None, None)
-        manager.send_request(AddComponent(ims), agent_filter=agent_id(some_agent), component_filter=component_id('AGENT'))
-
+        some_agent = self._get_controller_agent(manager)
         gateway = self.find_gateway()
         gw_config = GatewayConfiguration(hostname=gateway)
         manager.send_request(ChangeConfiguration(gw_config), agent_filter=agent_id(some_agent), component_filter=component_id('device_controller'))
@@ -262,7 +270,14 @@ class SystemTest(object):
             if msg.exception:
                 raise msg.exception
             device_id = msg.result
+            future = self.answer_listener.expect_message()
             manager.send_request(StartDevice(device_id), component_filter=component_id('device_controller'))
+            future.wait(timeout=60)
+            msg = future.get()
+            if msg.exception:
+                raise msg.exception
+            else:
+                log.info('result: %s',msg.result)
             # give some time for things to stabilize
             time.sleep(delay)
 
