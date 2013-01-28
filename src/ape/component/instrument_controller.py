@@ -80,21 +80,24 @@ class InstrumentController(ApeComponent):
             step = "starting agent"
             log.debug('starting agent for device %s', device_id)
             response = ServiceApi.instrument_agent_start(device_id)                                        # launches instrument agent (not yet driver)
-            time.sleep(30)
-            for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
-                NUMBER_OF_ATTEMPTS=4
-                for attempt in xrange(1,NUMBER_OF_ATTEMPTS):
-                    log.debug('sending command to device %s agent: %s', device_id, cmd)
-                    try:
-                        response = ServiceApi.instrument_execute_agent(device_id, cmd)
-                    except Exception,e:
-                        if attempt<NUMBER_OF_ATTEMPTS-1:
-                            log.warn("command failed: %s (retrying)"%e)
-                            time.sleep(30)
-                        else:
-                            log.error("command failed: %s (giving up)"%e)
-                            self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
-            self.report(OperationResult(result='device %s started'%device_id))
+        except Exception,e:
+            log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
+            self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
+        time.sleep(30)
+        for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
+            NUMBER_OF_ATTEMPTS=4
+            for attempt in xrange(1,NUMBER_OF_ATTEMPTS):
+                log.debug('sending command to device %s agent: %s', device_id, cmd)
+                try:
+                    response = ServiceApi.instrument_execute_agent(device_id, cmd)
+                except Exception,e:
+                    if attempt<NUMBER_OF_ATTEMPTS-1:
+                        log.warn("command failed: %s (retrying)"%e)
+                        time.sleep(30)
+                    else:
+                        log.error("command failed: %s (giving up)"%e)
+                        self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
+        self.report(OperationResult(result='device %s started'%device_id))
 
 #            # if response is success...
 #            step = "initialize agent (start driver)"
