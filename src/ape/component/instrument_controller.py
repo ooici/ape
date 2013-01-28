@@ -84,7 +84,7 @@ class InstrumentController(ApeComponent):
             log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
             self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
         time.sleep(30)
-        for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
+        for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
             NUMBER_OF_ATTEMPTS=4
             for attempt in xrange(1,NUMBER_OF_ATTEMPTS):
                 log.debug('sending command to device %s agent: %s', device_id, cmd)
@@ -106,7 +106,7 @@ class InstrumentController(ApeComponent):
 #            # if response is success...
 #            step = "connect agent to device"
 #            log.debug('commanding agent: go_active device %s', device_id)
-#            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_INITIALIZE')    # cause driver to connect to device
+#            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_GO_ACTIVE')    # cause driver to connect to device
 #            # if response is success...
 #            step = "put device into command mode"
 #            log.debug('commanding agent: run device %s', device_id)
