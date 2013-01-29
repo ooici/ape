@@ -86,17 +86,19 @@ class InstrumentController(ApeComponent):
         time.sleep(30)
         for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
             NUMBER_OF_ATTEMPTS=4
-            for attempt in xrange(1,NUMBER_OF_ATTEMPTS):
-                log.debug('sending command to device %s agent: %s', device_id, cmd)
+            for attempt in xrange(1,NUMBER_OF_ATTEMPTS+1):
+                log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
                     response = ServiceApi.instrument_execute_agent(device_id, cmd)
                 except Exception,e:
-                    if attempt<NUMBER_OF_ATTEMPTS-1:
-                        log.warn("command failed: %s (retrying)"%e)
+                    log.warn("gateway exception, attempt=%d ex=%r", attempt, e)
+                    if attempt < NUMBER_OF_ATTEMPTS:
+                        log.warn("command failed: %s (retrying)", e)
                         time.sleep(30)
                     else:
-                        log.error("command failed: %s (giving up)"%e)
+                        log.error("command failed: %s (giving up)", e)
                         self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
+                        return
         self.report(OperationResult(result='device %s started'%device_id))
 
 #            # if response is success...
