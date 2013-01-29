@@ -85,7 +85,7 @@ class InstrumentController(ApeComponent):
             self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
         time.sleep(30)
         for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
-            NUMBER_OF_ATTEMPTS=4
+            NUMBER_OF_ATTEMPTS=10
             for attempt in xrange(1,NUMBER_OF_ATTEMPTS+1):
                 log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
