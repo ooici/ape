@@ -90,15 +90,14 @@ class InstrumentController(ApeComponent):
                 log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
                     response = ServiceApi.instrument_execute_agent(device_id, cmd)
+                    break # continue to next cmd
                 except Exception,e:
-                    log.warn("gateway exception, attempt=%d ex=%r", attempt, e)
-                    if attempt < NUMBER_OF_ATTEMPTS:
-                        log.warn("command failed: %s (retrying)", e)
-                        time.sleep(30)
-                    else:
-                        log.error("command failed: %s (giving up)", e)
-                        self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
-                        return
+                    log.warn("command failed: %s (attempt %d of %d)", e, attempt, NUMBER_OF_ATTEMPTS)
+                time.sleep(30)
+            else:
+                log.error("giving up after repeated failures")
+                self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
+                return
         self.report(OperationResult(result='device %s started'%device_id))
 
 #            # if response is success...
