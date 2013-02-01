@@ -28,7 +28,7 @@ class LoggingTransform(TransformDataProcess):
         self._next = self._rate = self.CFG.get('rate', 100)
         self._start = time.time()
         try:
-            agent_name = self.CFG.get('agent', APE_AGENT_NAME)
+            agent_name = self.CFG.get('ape_agent', APE_AGENT_NAME)
             self._agent = self.container.proc_manager.procs_by_name[agent_name]
         except:
             log.warn('can not send reply messages, no ape agent found in container: %s', agent_name)

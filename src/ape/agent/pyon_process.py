@@ -40,6 +40,15 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
     def on_init(self):
         pass
     def on_start(self):
+        try:
+            import pprint
+            log.info(pprint.pformat(self.CFG))
+            agent_name = self.CFG.get('ape_agent', 'testing_agent')
+            log.info(pprint.pformat(self.container.proc_manager.procs_by_name))
+            ape_agent = self.container.proc_manager.procs_by_name[agent_name]
+            log.info(repr(ape_agent))
+        except:
+            pass
         self.start_agent()
     def on_quit(self):
         log.debug('on_quit called')
