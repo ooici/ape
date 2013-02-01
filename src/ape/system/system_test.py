@@ -14,7 +14,7 @@ from ape.system.containers import launch_containers, reconnect_containers
 from ape.manager.simple_manager import SimpleManager, Listener, InventoryListener
 from ape.common.requests import AddComponent, InventoryRequest
 from ape.common.messages import  component_id
-from ape.common.requests import InventoryResult
+from ape.common.requests import InventoryResult, PerformanceResult, OperationResult
 from ape.common.types import ApeException
 from ape.component.preloader import Preloader, PerformPreload, NotifyPreloadComplete, PathConfiguration, TemplateConfiguration
 from ape.component.gateway_client import GatewayConfiguration
@@ -24,6 +24,7 @@ from ion.processes.bootstrap.ion_loader import TESTED_DOC, DEFAULT_CATEGORIES
 import logging
 from ape.component.instrument_controller import *
 from gevent.event import AsyncResult
+from threading import Lock
 
 log = logging.getLogger('ape.system.system_test')
 
@@ -57,6 +58,37 @@ class AnswerListener(Listener):
         if self.next_result:
             self.next_result.set(result)
             self.next_result = None
+
+class PerformanceListener(Listener):
+    lock = Lock()
+    keep_history=5
+    latest_rates = { }
+    def on_message(self, message):
+        if isinstance(message.result, PerformanceResult):
+            self.handle_message(message.component, message.result)
+    def handle_message(self, component, result):
+        with self.lock:
+            if component not in self.latest_rates:
+                self.latest_rates[component] = []
+            rate_list = self.latest_rates[component]
+            rate_list[0:0] = [ result.data ]
+            if len(rate_list)>self.keep_history:
+                rate_list[self.keep_history:] = [ ]
+    def get_rate(self, component, samples=1):
+        with self.lock:
+            if component not in self.latest_rates:
+                return 0
+            rate_list = self.latest_rates[component]
+            if not rate_list:
+                return 0
+            real_samples = min(samples, len(rate_list))
+            sum=0
+            for n in xrange(0,real_samples):
+                sum += rate_list[n]
+            return sum/real_samples
+    def get_names(self):
+        with self.lock:
+            return self.latest_rates.keys()
 
 class SystemTest(object):
 
@@ -128,7 +160,8 @@ class SystemTest(object):
         self.manager.add_listener(self.preload_listener)
         self.answer_listener = AnswerListener()
         self.manager.add_listener(self.answer_listener)
-
+        self.rate_listener = PerformanceListener()
+        self.manager.add_listener(self.rate_listener)
 
     def _create_manager(self):
 #        # TODO: if have specific ape-rabbit config, use it
@@ -196,9 +229,9 @@ class SystemTest(object):
         return xrange(int(range_str[0]), int(range_str[1])+1)
 
     def init_device(self, config, n):
-        log.info('executing _preload_template: %d', n)
+#        log.info('executing _preload_template: %d', n)
         self._preload_template(config, xrange(n,n+1))
-        log.info('executing start_devices: %d', n)
+#        log.info('executing start_devices: %d', n)
         self.start_devices(self.config, self.manager, nrange=xrange(n,n+1))
 
     def _preload_path(self, config):
@@ -216,7 +249,7 @@ class SystemTest(object):
         self._preload(name, TemplateConfiguration(range=nrange, templates=templates))
 
     def _preload(self, name, loader_config):
-        log.info('starting preload: ' + name)
+#        log.info('starting preload: ' + name)
         req = PerformPreload(name, loader_config)
         self.manager.send_request(req, component_filter=component_id('loader'))
         result = self.preload_listener.wait_for_result(name)
@@ -245,9 +278,9 @@ class SystemTest(object):
         range_str = config.get("start-devices.range").split('-')
         template = config.get("start-devices.devices")
         delay = config.get("start-devices.sleep-time")
-        if template:
-            log.info("starting devices using template: %s", template)
-        else:
+        if not template:
+#            log.info("starting devices using template: %s", template)
+#        else:
             log.warn("no devices indicated for starting")
             return
 
@@ -262,7 +295,7 @@ class SystemTest(object):
 
         for n in nrange:
             name = template % n
-            log.info("starting instrument %d at %s", n, time.ctime())
+#            log.info("starting instrument %d at %s", n, time.ctime())
             future = self.answer_listener.expect_message()
             manager.send_request(GetInstrumentId(name), agent_filter=agent_id(some_agent), component_filter=component_id('device_controller'))
             future.wait(timeout=60)
@@ -276,8 +309,8 @@ class SystemTest(object):
             msg = future.get()
             if msg.exception:
                 raise msg.exception
-            else:
-                log.info('result: %s',msg.result)
+#            else:
+#                log.info('result: %s',msg.result)
             # give some time for things to stabilize
             time.sleep(delay)
 
@@ -310,6 +343,12 @@ class SystemTest(object):
 
     def get_agents(self):
         return self.inventory.inventory.keys()
+
+    def get_message_rates(self, samples=1):
+        out = { }
+        for key in self.rate_listener.get_names():
+            out[key] = self.rate_listener.get_rate(key, samples)
+        return out
 
 class MeasureDataFlow(Listener):
     def get_message_rate(self):

@@ -20,6 +20,17 @@ def _step(msg):
 def _exists():
     log.info('-----> db exists? %r' % os.path.exists('/Users/jnewbrough/.cloudinitd/cloudinitd-demo13.db'))
 
+def _rates(data):
+    min_value = 10000
+    max_value = -5
+    sum = 0
+    for key in data:
+        value = 6000/data[key]
+        min_value = min(min_value,value)
+        max_value = max(max_value,value)
+        sum += value
+    _step("reporting rates for %d devices, min %f, max %f, avg %f (msgs/min), total %f (msgs/sec)" % (len(data), min_value, max_value, sum/len(data), sum/len(data)/60))
+
 def main():
     start_time = time.time()
     log = logging.getLogger('test')
@@ -62,11 +73,12 @@ def main():
         nrange = test.get_preload_range(config)
         for n in nrange:
             _step("starting device %d"%n)
+            device_begin = time.time()
             test.init_device(config,n)
+            elapsed = time.time() - device_begin
+            _step("completed device %d launch in %f seconds" % (n,elapsed))
+            _rates(test.get_message_rates())
 
-#        test.start_components()
-#        driver_time = time.time()
-#        log.info("starting devices took %.2f seconds" % (driver_time-preload_time))
         _step('performing test')
         results = test.perform_test()
         if results:

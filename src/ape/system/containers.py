@@ -16,14 +16,14 @@ from ape.common.types import ApeException
 import time
 
 def launch_containers(config, couch, rabbit, graylog, elasticsearch):
-    print '*** containers.launch_containers'
+#    print '*** containers.launch_containers'
     containers = Containers(config, couch, rabbit, graylog, elasticsearch)
     containers.create_launch_plan()
     containers.launch_containers()
     return containers
 
 def reconnect_containers(config, couch, rabbit, graylog, elasticsearch):
-    print '*** containers.reconnect_containers'
+#    print '*** containers.reconnect_containers'
     containers = Containers(config, couch, rabbit, graylog, elasticsearch)
     containers.connect_cloudinitd(must_exist=True)
     return containers
@@ -156,7 +156,7 @@ class Containers(object):
         cmd = 'bin/generate-plan --profile %s --rel %s --launch %s %s' % (
                     os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
                     os.path.abspath(self.launch_config), os.path.abspath(self.plan))
-        print '====>>> about to execute: ' + cmd
+#        print '====>>> about to execute: ' + cmd
         code = subprocess.call(cmd, shell=True, cwd=self.source_directory)
         if code!=0:
             raise ApeException('failed to execute ' + cmd)
@@ -165,7 +165,7 @@ class Containers(object):
 #        home = os.environ['HOME']
 #        file = os.path.join(self.launch_plan, self.cloud_config)
         cmd='cloudinitd boot -vvv -n %s launch.conf' % self.name
-        print '====>>> about to execute: ' + cmd
+#        print '====>>> about to execute: ' + cmd
 
         # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
         #self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
@@ -182,7 +182,7 @@ class Containers(object):
         print '*** ' + db_file + ' must exist? ' + repr(must_exist)
         if must_exist and not os.path.exists(db_file):
             raise ApeException('cannot reconnect to cloudinitd -- launch does not exist')
-        print "=====>>>> about to connect to " + config
+#        print "=====>>>> about to connect to " + config
         self.util = CloudInitD(home + '/.cloudinitd', config_file=config, db_name=self.name, boot=False, ready=False, fail_if_db_present=False)
 
     def wait_for_containers(self):
@@ -209,7 +209,7 @@ class Containers(object):
 
     def get_process_list(self):
         cmd='ceictl -n %s process list' % self.name
-        print '====>>> about to execute: ' + cmd
+#        print '====>>> about to execute: ' + cmd
 
         # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
         #self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
