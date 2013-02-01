@@ -17,8 +17,9 @@ class GetInstrumentId(ApeRequest):
     def __init__(self, name):
         self.name = name
 class StartDevice(ApeRequest):
-    def __init__(self, id):
+    def __init__(self, id, timeout=300):
         self.id = id
+        self.timeout = timeout
 class GetDataProduct(ApeRequest):
     def __init__(self, id):
         self.id = id
@@ -34,7 +35,7 @@ class InstrumentController(ApeComponent):
             print 'sending report: ' + repr(out)
             self.report(out)
         elif isinstance(request, StartDevice):
-            self.start_device(request.id)
+            self.start_device(request.id, request.timeout)
         elif isinstance(request, GetDataProduct):
             self.report(getResult(self.find_data_product, request.id))
         elif isinstance(request, ChangeConfiguration):
@@ -74,53 +75,32 @@ class InstrumentController(ApeComponent):
         """ perform service gateway lookups ordinarily performed by ion-ux to load a device """
         instrument = ServiceApi.find_instrument(device_id)
 
-    def start_device(self, device_id):
-        """ start necessary drivers and agents for instrument """
+    def start_device(self, device_id, timeout=300):
+        """ start necessary drivers and agents for instrument, put into streaming mode """
+        give_up_time = time.time() + timeout
+        pause_time = 5 # too big = wait longer than needed ; too small = check too frequently
         try:
-            step = "starting agent"
             log.debug('starting agent for device %s', device_id)
-            response = ServiceApi.instrument_agent_start(device_id)                                        # launches instrument agent (not yet driver)
+            ServiceApi.instrument_agent_start(device_id)                                        # launches instrument agent (not yet driver)
         except Exception,e:
             log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
-            self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
-        time.sleep(30)
+            self.report(OperationResult(result='failed to start device '+device_id), exception=e))
         for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
-            NUMBER_OF_ATTEMPTS=10
-            for attempt in xrange(1,NUMBER_OF_ATTEMPTS+1):
+            attempt=0
+            while True:
+                time.sleep(pause_time)
+                attempt += 1
                 log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
-                    response = ServiceApi.instrument_execute_agent(device_id, cmd)
-                    break # continue to next cmd
+                    ServiceApi.instrument_execute_agent(device_id, cmd)
+                    break # go to next cmd
                 except Exception,e:
                     log.warn("command failed: %s (attempt %d of %d)", e, attempt, NUMBER_OF_ATTEMPTS)
-                time.sleep(30)
-            else:
-                log.error("giving up after repeated failures")
-                self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
-                return
+                    if time.time() > give_up_time:
+                        log.error("giving up after repeated failures")
+                        self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
+                        return
         self.report(OperationResult(result='device %s started'%device_id))
-
-#            # if response is success...
-#            step = "initialize agent (start driver)"
-#            log.debug('commanding agent: initialize device %s', device_id)
-#            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_INITIALIZE')   # cause agent to start driver process
-#            # if response is success...
-#            step = "connect agent to device"
-#            log.debug('commanding agent: go_active device %s', device_id)
-#            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_GO_ACTIVE')    # cause driver to connect to device
-#            # if response is success...
-#            step = "put device into command mode"
-#            log.debug('commanding agent: run device %s', device_id)
-#            response = ServiceApi.instrument_execute_agent(device_id, 'RESOURCE_AGENT_EVENT_RUN')          # put agent/driver into command mode
-#            # if response is success...
-#            step = "command device to begin streaming"
-#            log.debug('commanding agent: go_streaming device %s', device_id)
-#            response = ServiceApi.instrument_execute_agent(device_id, 'DRIVER_EVENT_START_AUTOSAMPLE')     # put into streaming mode
-#
-#            self.report(OperationResult(result='device %s started'%device_id))
-#        except Exception,e:
-#            log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
-#            self.report(OperationResult(result='device %s failed step: %s'%(device_id,step), exception=e))
 
     def find_data_product(self, device_id):
         rr = self._get_resource_registry()
@@ -128,8 +108,6 @@ class InstrumentController(ApeComponent):
         producer_ids,_ = rr.find_objects(subject=device_id, predicate=PRED.hasDataProducer, object_type=RT.DataProducer, id_only=True)
         if len(producer_ids)==0:
             return None
-#        if len(producer_ids)>1:
-#            raise IonException('found more than one producer for device ' + device_id + ': ' + repr(producer_ids))
         # data product hasDataProducer
         product_ids,_ = rr.find_subjects(object=producer_ids[0], predicate=PRED.hasDataProducer, subject_type=RT.DataProduct, id_only=True)
         if len(product_ids)==0:
