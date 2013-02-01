@@ -95,7 +95,7 @@ class InstrumentController(ApeComponent):
                     ServiceApi.instrument_execute_agent(device_id, cmd)
                     break # go to next cmd
                 except Exception,e:
-                    log.warn("command failed: %s (attempt %d of %d)", e, attempt, NUMBER_OF_ATTEMPTS)
+                    log.warn("[%d] command failed: %s", attempt, e)
                     if time.time() > give_up_time:
                         log.error("giving up after repeated failures")
                         self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
