@@ -268,7 +268,7 @@ class SystemTest(object):
     def _get_controller_agent(self, manager):
         if not self.controller_agent:
             self.controller_agent = self.get_agents()[0]
-            log.info('starting instrument controller component on %s' % self.controller_agent)
+            log.debug('starting instrument controller component on %s' % self.controller_agent)
             ims = InstrumentController('device_controller', None, None)
             manager.send_request(AddComponent(ims), agent_filter=agent_id(self.controller_agent), component_filter=component_id('AGENT'))
         return self.controller_agent
@@ -309,8 +309,8 @@ class SystemTest(object):
             msg = future.get()
             if msg.exception:
                 raise msg.exception
-#            else:
-#                log.info('result: %s',msg.result)
+            else:
+                log.info('result: %s',msg.result)
             # give some time for things to stabilize
             time.sleep(delay)
 

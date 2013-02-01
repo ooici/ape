@@ -18,10 +18,13 @@ APE_AGENT_NAME='testing_agent'
 class LoggingTransform(TransformDataProcess):
     def __init__(self,*a,**b):
         super(LoggingTransform,self).__init__(*a,**b)
-        self._label = self.CFG.get('label', 'rate_' + self._proc_name)
         self._count_lock = threading.Lock()
         self._report_lock = threading.Lock()
         self._count = 0
+
+    def on_start(self):
+        super(LoggingTransform,self).on_start()
+        self._label = self.CFG.get('label', 'rate_' + self._proc_name)
         self._next = self._rate = self.CFG.get('rate', 100)
         self._start = time.time()
         try:

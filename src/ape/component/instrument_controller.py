@@ -88,7 +88,6 @@ class InstrumentController(ApeComponent):
         for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
             attempt=0
             while True:
-                time.sleep(pause_time)
                 attempt += 1
                 log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
@@ -100,6 +99,7 @@ class InstrumentController(ApeComponent):
                         log.error("giving up after repeated failures")
                         self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
                         return
+                    time.sleep(pause_time)
         self.report(OperationResult(result='device %s started'%device_id))
 
     def find_data_product(self, device_id):
