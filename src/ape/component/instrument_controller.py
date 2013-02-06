@@ -85,6 +85,7 @@ class InstrumentController(ApeComponent):
         except Exception,e:
             log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
             self.report(OperationResult(result='failed to start device '+device_id), exception=e)
+            return
         for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
             attempt=0
             while True:
