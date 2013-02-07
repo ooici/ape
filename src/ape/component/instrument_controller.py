@@ -77,7 +77,8 @@ class InstrumentController(ApeComponent):
 
     def start_device(self, device_id, timeout=300):
         """ start necessary drivers and agents for instrument, put into streaming mode """
-        give_up_time = time.time() + timeout
+        start_time = time.time()
+        give_up_time = start_time + timeout
         pause_time = 5 # too big = wait longer than needed ; too small = check too frequently
         try:
             log.debug('starting agent for device %s', device_id)
@@ -86,13 +87,20 @@ class InstrumentController(ApeComponent):
             log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
             self.report(OperationResult(result='failed to start device '+device_id), exception=e)
             return
+        wait_begin = time.time()
+        all_times = { 'process': wait_begin-start_time }
         for cmd in [ 'RESOURCE_AGENT_EVENT_INITIALIZE', 'RESOURCE_AGENT_EVENT_GO_ACTIVE', 'RESOURCE_AGENT_EVENT_RUN', 'DRIVER_EVENT_START_AUTOSAMPLE' ]:
             attempt=0
             while True:
                 attempt += 1
                 log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
+                    execution_start = time.time()
                     ServiceApi.instrument_execute_agent(device_id, cmd)
+                    execution_end = time.time()
+                    all_times[ 'wait_'+cmd ] = execution_start - wait_begin
+                    all_times[ cmd ] = execution_end - execution_start
+                    wait_begin = execution_end
                     break # go to next cmd
                 except Exception,e:
                     log.warn("[%d] command failed: %s", attempt, e)
@@ -101,7 +109,7 @@ class InstrumentController(ApeComponent):
                         self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
                         return
                     time.sleep(pause_time)
-        self.report(OperationResult(result='device %s started'%device_id))
+        self.report(OperationResult(result=all_times))
 
     def find_data_product(self, device_id):
         rr = self._get_resource_registry()

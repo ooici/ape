@@ -97,6 +97,7 @@ class SystemTest(object):
         self.config = config
         self.controller_agent = None
         self.system = None
+        self.manager = None
 
     def launch_system(self):
         """ bring up all VMs and applications """
@@ -147,7 +148,8 @@ class SystemTest(object):
         """ shut down applications and VMs """
         self.destroy(pycc=self.system)
         self.destroy(couch=self.couch, rabbit=self.rabbit, graylog=self.graylog, elasticsearch=self.es)
-
+        if self.manager:
+            self.manager.close()
     ############################################################################################
 
     def _init_manager(self):
@@ -228,11 +230,11 @@ class SystemTest(object):
         range_str = config.get("range").split('-')
         return xrange(int(range_str[0]), int(range_str[1])+1)
 
-    def init_device(self, config, n):
+    def init_device(self, config, n, catch_up_frequency=1):
 #        log.info('executing _preload_template: %d', n)
         self._preload_template(config, xrange(n,n+1))
 #        log.info('executing start_devices: %d', n)
-        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1))
+        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1), catch_up_frequency)
 
     def _preload_path(self, config):
         name = config.get("name")
@@ -273,7 +275,7 @@ class SystemTest(object):
             manager.send_request(AddComponent(ims), agent_filter=agent_id(self.controller_agent), component_filter=component_id('AGENT'))
         return self.controller_agent
 
-    def start_devices(self, config, manager, nrange=None):
+    def start_devices(self, config, manager, nrange=None, catch_up_frequency=1, catch_up_time=1200):
         """ start all devices defined in config file """
         range_str = config.get("start-devices.range").split('-')
         template = config.get("start-devices.devices")
@@ -310,9 +312,19 @@ class SystemTest(object):
             if msg.exception:
                 raise msg.exception
             else:
-                log.info('result: %s',msg.result)
+                log.info('result: %r',msg.result)
             # give some time for things to stabilize
             time.sleep(delay)
+
+            if catch_up_frequency and n%catch_up_frequency==0:
+                self._wait_for_messages(n, catch_up_time)
+
+    def _wait_for_messages(self, n=1, catch_up_time):
+        give_up_time = time.time() + catch_up_time
+        while len(self.get_message_rates())<n:
+            if time.time()>give_up_time:
+                raise ApeException("waited %d sec for message rates from %d devices, but only got rates from %d devices" % (catch_up_time, n, len(self.get_message_rates())))
+            time.sleep(15)
 
     def start_transforms(self, config, manager, system, devices):
         """

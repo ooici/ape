@@ -52,6 +52,10 @@ class Containers(object):
 
     def create_launch_plan(self):
         os.makedirs(self.target_dir, mode=0755)
+
+        # make private copy of coi-services tarball
+        self._prepare_install_software()
+
         # copy and modify configuration of cloud resources
         self._modify_cloud_config()
 
@@ -60,6 +64,11 @@ class Containers(object):
         # copy deploy.yml and modify
         self._modify_deploy()
         self._generate_plan()
+
+    def _prepare_install_software(self):
+        cmd = self.config.get('containers.software.copy-command')
+        if cmd:
+            subprocess.check_call(cmd, shell=True)
 
     def _modify_cloud_config(self):
         """ copy template cloud config file and modify """
@@ -82,6 +91,13 @@ class Containers(object):
         data['couchdb']['password'] = self.config.get('couch.password')
 
         data['graylog']['host'] = self.config.get('graylog.hostname')
+
+        url = self.config.get('containers.software.url')
+        if url:
+            if 'packages' not in data or not data['packages']:
+                data['packages'] = {}
+            data['packages']['coi_services'] = url
+
         if self.config.get('containers.recipes'):
             if 'packages' not in data or not data['packages']:
                 data['packages'] = {}

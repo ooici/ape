@@ -172,7 +172,7 @@ class ServiceApi(object):
         if device_id in AGENT_ID_CACHE:
             return AGENT_ID_CACHE[device_id]
         result = service_gateway_get('resource_registry', 'find_objects', params={'subject': device_id, 'predicate':'hasAgentInstance'})
-        log.info("have agent id result: %r", result)
+        log.info("have agent id result: %r (%d in cache)", result, len(AGENT_ID_CACHE))
         agent_id = result[0][0]['_id']
         AGENT_ID_CACHE[device_id] = agent_id
         return agent_id
@@ -209,45 +209,6 @@ class ServiceApi(object):
         params = {}
         agent_response = service_gateway_agent_request(instrument_device_id, agent_command, params)
         return agent_response
-
-#    @staticmethod
-#    def signon_user(certificate):
-#        params={'certificate': certificate}
-#        user_id, valid_until, is_registered = service_gateway_post('identity_management', 'signon', params)
-#
-#        # set user id, valid until and is registered info in session
-#        # TODO might need to address issues that arise with using
-#        # session to set cookie when web server ends up being a pool
-#        # of web servers?
-#        session['user_id'] = user_id
-#        session['valid_until'] = valid_until
-#        session['is_registered'] = is_registered
-#
-#        # get roles and stash
-#        session['roles'] = service_gateway_get('org_management', 'find_all_roles_by_user', params={'user_id': user_id})
-#
-#    @staticmethod
-#    def signon_user_testmode(user_name):
-#        user_identities = ServiceApi.find_by_resource_type("UserIdentity")
-#        for user_identity in user_identities:
-#            if user_name in user_identity['name']:
-#                user_id = user_identity['_id']
-#                session['user_id'] = user_id
-#                session['valid_until'] = str(int(time.time()) * 100000)
-#                session['is_registered'] = True
-#
-#                # get roles and stash
-#                roles = service_gateway_get('org_management', 'find_all_roles_by_user', params={'user_id': user_id})
-#                roles_str = ""
-#                first_time = True
-#                for role in roles['RSN_Demo_org']:
-#                    if not first_time:
-#                        roles_str = roles_str + ","
-#                    else:
-#                        first_time = False
-#                    roles_str = roles_str + str(role["name"])
-#                session['roles'] = roles_str
-#                return
 
     @staticmethod
     def find_all_user_infos():

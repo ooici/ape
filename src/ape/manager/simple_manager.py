@@ -3,12 +3,11 @@ from pika import PlainCredentials, ConnectionParameters, SelectConnection
 from ape.common.messages import ApeRequestMessage, ApeResultMessage, ALL_AGENTS
 from ape.common.types import ApeRequest, ApeException
 import ape.common.requests
-from ape.apelog import log
 from ape.common.requests import InventoryResult
 from threading import Thread
 from time import sleep
 from pika.reconnection_strategies import SimpleReconnectionStrategy
-
+from ooi.logging import log
 outbound_exchange='ape-requests'
 inbound_exchange='ape-results'
 
@@ -33,7 +32,7 @@ class InventoryListener(Listener):
 class SimpleManager(object):
     """ simple manager that lets you send requests and view results """
     def __init__(self, broker_hostname='localhost', broker_username='guest', broker_password='guest'):
-        print 'starting manager: broker=%s user=%s'%(broker_hostname, broker_username)
+        log.debug('starting manager: broker=%s user=%s',broker_hostname, broker_username)
         self.listeners = []
         self._initializing = True
         if broker_username:
@@ -47,30 +46,30 @@ class SimpleManager(object):
         while self._initializing:
             sleep(1)
     def _on_connected(self, connection):
-        print ('connected to broker')
+        log.trace('connected to broker')
         self.connection.channel(self._on_outbound_channel)
     def _on_outbound_channel(self, channel):
-        print ('have outbound channel')
+        log.trace('have outbound channel')
         self.outbound_channel = channel
         self.outbound_channel.exchange_declare(exchange=outbound_exchange, type='fanout',callback=self._on_outbound_exchange)
     def _on_outbound_exchange(self, arg):
-        print ('have outbound exchange')
+        log.trace('have outbound exchange')
         self.connection.channel(self._on_inbound_channel)
     def _on_inbound_channel(self, channel):
-        print ('have inbound channel')
+        log.trace('have inbound channel')
         self.inbound_channel = channel
         channel.exchange_declare(exchange=inbound_exchange, type='fanout', callback=self._on_inbound_exchange)
     def _on_inbound_exchange(self, arg):
-        print ('have inbound exchange')
+        log.trace('have inbound exchange')
         self.inbound_channel.queue_declare(exclusive=True, callback=self._on_inbound_queue)
     def _on_inbound_queue(self, queue_declaration):
-        print ('have inbound queue')
+        log.trace('have inbound queue')
         self.queue_name = queue_declaration.method.queue
         self.inbound_channel.queue_bind(exchange=inbound_exchange, queue=self.queue_name, callback=self._on_queue_bound)
     def _on_queue_bound(self, arg):
-        print ('starting connection')
+        log.trace('starting connection')
         self.inbound_channel.basic_consume(self.callback, queue=self.queue_name, no_ack=True, consumer_tag=inbound_exchange)
-        print ('connection is started')
+        log.trace('connection is started')
         self._initializing = False
 
     def add_listener(self, listener):
@@ -96,5 +95,11 @@ class SimpleManager(object):
 #        self.outbound_channel.close()
 #        self.inbound_channel.stop_consuming()
 #        self.inbound_channel.close()
-        self.connection.close()
-        pass
+        try:
+            self.connection.ioloop.close()
+        except:
+            log.warn("failed to close ioloop", exc_info=True)
+            if self.connection and self.connection.ioloop:
+                log.debug("dict: %r", self.connection.ioloop.__dict__)
+#        self.connection.close()
+#        pass
