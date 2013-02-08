@@ -13,7 +13,7 @@ couch:
 rabbit:
   type: manual   # or manual or launch-generated
 #  hostname: localhost
-  hostname: pub-4-112.dev.oceanobservatories.org
+  hostname: pub-4-100.dev.oceanobservatories.org
   username: guest
   password: guest
 
@@ -27,10 +27,15 @@ graylog:
   hostname: pub-4-113.dev.oceanobservatories.org
 
 containers:
-  name: demo13
+  name: demo15
 
   image: r2-worker
   allocation: m1.xlarge
+  # NOTE: you must already have your keys known on sddevrepo (see adam) AND cached in your local environment (ssh-add)
+  # otherwise comment this out and use the default URL
+  software:
+    copy-command: ssh cc@sddevrepo cp /var/www/html/releases/coi-services-ooici-master.tar.gz /var/www/html/releases/ape/coi-services-demo15.tar.gz
+    url: http://sddevrepo.oceanobservatories.org/releases/ape/coi-services-demo15.tar.gz
 
   # OBSOLETE
   #launch-plan-template: ../launch-plans/sandbox/lightweight
@@ -40,7 +45,7 @@ containers:
   launch-plan: ../launch-plans/R2
   # relative to launch-plan
   resource-config: profiles/nimbus-static.yml.example
-  cloud-config: ../coi-services/res/launch/alpha.yml
+#  cloud-config: ../coi-services/res/launch/alpha.yml
   cloud-config: ../coi-services/res/launch/ape-nimbus.yml
 
   # special branch that always includes ape agent in each pycc's deploy.yml
@@ -48,9 +53,13 @@ containers:
 
   execution-engines:
     default:
-      slots: 100 # number of slots per container
+      slots: 85 # number of slots per container
       replicas: 6 # number of containers per VM
-      base_need: 2 # minimum number of VMs to provision
+      base_need: 1 # minimum number of VMs to provision
+    services:
+      slots: 40 # number of slots per container
+      replicas: 6 # number of containers per VM
+      base_need: 1 # minimum number of VMs to provision
 
 #      nodes: 1       # initial number of VMs to launch
 #      containers: 3  # pycc containers per node (UNUSED for now)
@@ -62,7 +71,7 @@ services:
 start-devices:
     range: 1-500
     devices: scale_test_device_%d
-    sleep-time: 15
+    sleep-time: 5
 
 preload:
   # preload items handled in order
@@ -104,10 +113,12 @@ preload:
       iai/name: Agent for scale test device %d
       iai/svr_addr: localhost
       iai/comms_method: ethernet
-      iai/comms_device_address: ec2-54-242-229-106.compute-1.amazonaws.com
+      iai/comms_device_address: ec2-54-234-139-164.compute-1.amazonaws.com
+      #ec2-54-242-229-106.compute-1.amazonaws.com
       iai/comms_device_port: 12%03d
 #      comms_server_address: localhost
-      comms_server_address: ec2-54-242-229-106.compute-1.amazonaws.com
+      comms_server_address: ec2-54-234-139-164.compute-1.amazonaws.com
+      #ec2-54-242-229-106.compute-1.amazonaws.com
       comms_server_port: 11%03d
       comms_server_cmd_port: 10%03d
       iai/port_agent_work_dir: /tmp
@@ -143,6 +154,16 @@ preload:
       input_resource_id: scaleID%03d
       resource_type: InstrumentDevice
       create_stream: FALSE
+
+
+#    - row_type: DataProcess
+#      ID: log_parsed_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD_LOG
+#      in_data_product_id: scale_instrument_DP%03d
+#      out_data_products: "{ 'none': 'bogus_output1_%03d' }"
+#      configuration: "{ 'label': 'parsed_rate_%03d' }"
 
 ### split into L0 output streams
 
@@ -223,6 +244,16 @@ preload:
       in_data_product_id: scale_instrument_DP%03d
       out_data_products: "{'conductivity':'scale_L0_cond_DP%03d','temperature':'scale_L0_temp_DP%03d','pressure':'scale_L0_pressure_DP%03d'}"
       configuration:
+
+
+#    - row_type: DataProcess
+#      ID: log_L0_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD_LOG
+#      in_data_product_id: scale_L0_pressure_DP%03d
+#      out_data_products: "{ 'none': 'bogus_output2_%03d' }"
+#      configuration: "{ 'label': 'L0_rate_%03d' }"
 
 ### process L0 outputs into L1 streams
 
@@ -321,6 +352,16 @@ preload:
       in_data_product_id: scale_L0_pressure_DP%03d
       out_data_products: "{'pressure':'scale_L1_pressure_DP%03d'}"
       configuration:
+
+
+#    - row_type: DataProcess
+#      ID: log_L1_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD_LOG
+#      in_data_product_id: scale_L1_pressure_DP%03d
+#      out_data_products: "{ 'none': 'bogus_output3_%03d' }"
+#      configuration: "{ 'label': 'L1_rate_%03d' }"
 
 ### process L1 outputs into L2 streams
 

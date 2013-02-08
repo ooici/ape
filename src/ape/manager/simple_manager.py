@@ -15,6 +15,7 @@ class _ExecBlocking(Thread):
     def __init__(self, connection):
         self.connection = connection
         super(_ExecBlocking,self).__init__()
+        self.setDaemon(True)
     def run(self):
         self.connection.ioloop.start()
 
@@ -42,7 +43,8 @@ class SimpleManager(object):
             p = ConnectionParameters(host=broker_hostname)
             s = SimpleReconnectionStrategy()
             self.connection = SelectConnection(p, on_open_callback=self._on_connected, reconnection_strategy=s)
-        _ExecBlocking(self.connection).start()
+        self._ioloop = _ExecBlocking(self.connection)
+        self._ioloop.start()
         while self._initializing:
             sleep(1)
     def _on_connected(self, connection):
@@ -99,6 +101,6 @@ class SimpleManager(object):
             self.connection.ioloop.close()
         except:
             log.warn("failed to close ioloop", exc_info=True)
-            log.info("dict: %r", self.connection.ioloop.__dict__)
 #        self.connection.close()
 #        pass
+            log.info("dict: %r", self.connection.ioloop.__dict__)

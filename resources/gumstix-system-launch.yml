@@ -1,0 +1,470 @@
+# TODO:
+# - add logstash to big_gray_rabbit
+# - rm /var/lib/rabbitmq/mnesia /var/lib/bigcouch/*
+# - mark all services down
+# - add motd
+
+couch:
+  type: manual
+  hostname: pub-4-111.dev.oceanobservatories.org
+  username: sofa
+  password: sofa
+
+rabbit:
+  type: manual   # or manual or launch-generated
+#  hostname: localhost
+  hostname: pub-4-100.dev.oceanobservatories.org
+  username: guest
+  password: guest
+
+elasticsearch:
+  type: manual   # or manual or launch-generated
+  username: # if missing, will create random value
+  password:
+
+graylog:
+  type: manual   # or manual or launch-generated
+  hostname: pub-4-113.dev.oceanobservatories.org
+
+containers:
+  name: demo17
+
+#  image: r2-worker
+#  allocation: m1.xlarge
+#  # NOTE: you must already have your keys known on sddevrepo (see adam) AND cached in your local environment (ssh-add)
+#  # otherwise comment this out and use the default URL
+#  software:
+#    copy-command: ssh cc@sddevrepo cp /var/www/html/releases/coi-services-ooici-master.tar.gz /var/www/html/releases/ape/coi-services-demo15.tar.gz
+#    url: http://sddevrepo.oceanobservatories.org/releases/ape/coi-services-demo15.tar.gz
+#
+#  # OBSOLETE
+#  #launch-plan-template: ../launch-plans/sandbox/lightweight
+#  #cloud-config: ooinimbus-static.conf
+#
+#  ### NEW REPLACEMENTS IN PROGRESS
+#  launch-plan: ../launch-plans/R2
+#  # relative to launch-plan
+#  resource-config: profiles/nimbus-static.yml.example
+##  cloud-config: ../coi-services/res/launch/alpha.yml
+#  cloud-config: ../coi-services/res/launch/ape-nimbus.yml
+#
+#  # special branch that always includes ape agent in each pycc's deploy.yml
+#  recipes: https://github.com/newbrough/dt-data/tarball/ape_agent
+#
+#  execution-engines:
+#    default:
+#      slots: 85 # number of slots per container
+#      replicas: 6 # number of containers per VM
+#      base_need: 1 # minimum number of VMs to provision
+#    services:
+#      slots: 40 # number of slots per container
+#      replicas: 6 # number of containers per VM
+#      base_need: 1 # minimum number of VMs to provision
+
+#      nodes: 1       # initial number of VMs to launch
+#      containers: 3  # pycc containers per node (UNUSED for now)
+#      processes: 10  # number of IonProcess slots per container
+
+services:
+  deploy-file: ../coi-services/res/deploy/r2deploy.yml
+
+start-devices:
+    range: 1-50
+    devices: gumstix_test_device_%d
+    sleep-time: 5
+
+preload:
+  # preload items handled in order
+  # can have path or scenarios key -- do normal IonLoader process
+  - name: base
+    # path is full URL (cannot use nickname "master")
+#    path: https://docs.google.com/spreadsheet/pub?key=0AgkUKqO5m-ZidFFlYVRkTjVycEtTSC1fWkZod01odmc&output=xls
+    path: https://docs.google.com/spreadsheet/pub?key=0AttCeOvLP6XMdG82NHZfSEJJOGdQTkgzb05aRjkzMEE&output=xls
+#    scenarios: [BASE,BETA]
+    scenarios: [BASE,BETA,APE]
+  # or can have range and various tab named entries -- explicit row descriptions
+  # this will loop over range to generate row entries in memory and call IonLoader operations
+  - name: scale_devices
+#    range: 1-99
+    range: 1-50
+    # loop over IonLoader.DEFAULT_CATEGORIES:
+    #   loop over range:
+    #     create row[] substituting loop index
+    #     call IonLoader._load_CATEGORY(row[])
+    templates:
+    - row_type: InstrumentDevice
+      ID: scaleID%03d
+      owner_id: USER_1
+      lcstate: DEPLOYED_AVAILABLE
+      org_ids: MF_3
+      instrument_model_id: IM2
+      contact_ids:
+      platform_device_id:
+      id/name: gumstix_test_device_%d
+      id/reference_urls:
+
+    - row_type: InstrumentAgentInstance
+      ID: scaleIAI%03d
+      owner_id: USER_1
+      org_ids: MF_3
+      instrument_agent_id: IA2
+      instrument_device_id: scaleID%03d
+      start_agent: FALSE
+      iai/name: Agent for scale test device %d
+      iai/svr_addr: localhost
+      iai/comms_method: ethernet
+      iai/comms_device_address: ec2-54-234-139-164.compute-1.amazonaws.com
+      #ec2-54-242-229-106.compute-1.amazonaws.com
+      iai/comms_device_port: 12%03d
+#      comms_server_address: localhost
+      comms_server_address: ec2-54-234-139-164.compute-1.amazonaws.com
+      #ec2-54-242-229-106.compute-1.amazonaws.com
+      comms_server_port: 11%03d
+      comms_server_cmd_port: 10%03d
+      iai/port_agent_work_dir: /tmp
+
+### parsed output streams
+
+    - row_type: DataProduct
+      ID: scale_instrument_DP%03d
+      owner_id: USER_1
+      lcstate: DEPLOYED_AVAILABLE
+      org_ids: MF_3
+      stream_def_id: StreamDef12
+      persist_metadata: TRUE
+      persist_data: TRUE
+      dp/name: scale test CTD %d
+      dp/description: parsed stream from SBE37 simulator
+      contact_ids: M_MANAGER,O_OWNERREP
+      geo_constraint_id: GEO2
+      coordinate_system_id: SUBMERGED
+      dp/processing_level_code: Parsed_Canonical
+      dp/quality_control_level: a
+      dp/ISO_spatial_representation_type: textTable
+      available_formats: csv,netcdf
+      dp/license_uri:
+      dp/exclusive_rights_status: Public
+      dp/exclusive_rights_end_date:
+      obsolete/exclusive_rights_contact:
+      dp/exclusive_rights_notes:
+      param_dict_type: ctd_parsed_param_dict
+
+    - row_type: DataProductLink
+      data_product_id: scale_instrument_DP%03d
+      input_resource_id: scaleID%03d
+      resource_type: InstrumentDevice
+      create_stream: FALSE
+
+    - row_type: DataProcess
+      ID: log_parsed_PROC%03d
+      owner_id: USER_1
+      org_ids: MF_3
+      data_process_definition_id: DPD_LOG
+      in_data_product_id: scale_instrument_DP%03d
+      out_data_products: "{ 'none': 'bogus_output1_%03d' }"
+      configuration: "{ 'label': 'parsed_rate_%03d', 'rate': 24 }"
+
+#### split into L0 output streams
+#
+#    - row_type: DataProduct
+#      ID: scale_L0_cond_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef13
+#      persist_metadata: FALSE
+#      persist_data: FALSE
+#      dp/name: scale test L0 C %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L0
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProduct
+#      ID: scale_L0_temp_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef14
+#      persist_metadata: FALSE
+#      persist_data: FALSE
+#      dp/name: scale test L0 T %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L0
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProduct
+#      ID: scale_L0_pressure_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef15
+#      persist_metadata: FALSE
+#      persist_data: FALSE
+#      dp/name: scale test L0 D %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L0
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: scale_split_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD1
+#      in_data_product_id: scale_instrument_DP%03d
+#      out_data_products: "{'conductivity':'scale_L0_cond_DP%03d','temperature':'scale_L0_temp_DP%03d','pressure':'scale_L0_pressure_DP%03d'}"
+#      configuration:
+#
+#
+#    - row_type: DataProcess
+#      ID: log_L0_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD_LOG
+#      in_data_product_id: scale_L0_pressure_DP%03d
+#      out_data_products: "{ 'none': 'bogus_output2_%03d' }"
+#      configuration: "{ 'label': 'L0_rate_%03d' }"
+#
+#### process L0 outputs into L1 streams
+#
+#    - row_type: DataProduct
+#      ID: scale_L1_conductivity_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef16
+#      persist_metadata: FALSE
+#      persist_data: FALSE
+#      dp/name: scale test L1 C %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L1
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: scale_L1_cond_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD2
+#      in_data_product_id: scale_L0_cond_DP%03d
+#      out_data_products: "{'conductivity':'scale_L1_conductivity_DP%03d'}"
+#      configuration:
+#
+#    - row_type: DataProduct
+#      ID: scale_L1_temp_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef17
+#      persist_metadata: FALSE
+#      persist_data: FALSE
+#      dp/name: scale test L1 T %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L1
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: scale_L1_temp_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD3
+#      in_data_product_id: scale_L0_temp_DP%03d
+#      out_data_products: "{'temperature':'scale_L1_temp_DP%03d'}"
+#      configuration:
+#
+#    - row_type: DataProduct
+#      ID: scale_L1_pressure_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef18
+#      persist_metadata: FALSE
+#      persist_data: FALSE
+#      dp/name: scale test L1 P %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L1
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: scale_L1_pressure_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD4
+#      in_data_product_id: scale_L0_pressure_DP%03d
+#      out_data_products: "{'pressure':'scale_L1_pressure_DP%03d'}"
+#      configuration:
+#
+#
+#    - row_type: DataProcess
+#      ID: log_L1_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD_LOG
+#      in_data_product_id: scale_L1_pressure_DP%03d
+#      out_data_products: "{ 'none': 'bogus_output3_%03d' }"
+#      configuration: "{ 'label': 'L1_rate_%03d' }"
+#
+#### process L1 outputs into L2 streams
+#
+#    - row_type: DataProduct
+#      ID: scale_L2_salinity_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef19
+#      persist_metadata: TRUE
+#      persist_data: TRUE
+#      dp/name: scale test L2 S %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L2
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: scale_L2_salinity_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD5
+#      in_data_product_id: scale_instrument_DP%03d
+#      out_data_products: "{'salinity':'scale_L2_salinity_DP%03d'}"
+#      configuration:
+#
+#    - row_type: DataProduct
+#      ID: scale_L2_density_DP%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef20
+#      persist_metadata: TRUE
+#      persist_data: TRUE
+#      dp/name: scale test L2 D %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L2
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: scale_L2_density_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD6
+#      in_data_product_id: scale_instrument_DP%03d
+#      out_data_products: "{'density':'scale_L2_density_DP%03d'}"
+#      configuration:
+#
+#    - row_type: DataProduct
+#      ID: bogus_output_%03d
+#      owner_id: USER_1
+#      lcstate: DEPLOYED_AVAILABLE
+#      org_ids: MF_3
+#      stream_def_id: StreamDef20
+#      persist_metadata: TRUE
+#      persist_data: TRUE
+#      dp/name: scale test log hack %d
+#      contact_ids: M_MANAGER,O_OWNERREP
+#      geo_constraint_id: GEO2
+#      coordinate_system_id: SUBMERGED
+#      dp/processing_level_code: L2
+#      dp/quality_control_level: a
+#      dp/ISO_spatial_representation_type: textTable
+#      available_formats: csv,netcdf
+#      dp/license_uri:
+#      dp/exclusive_rights_status: Public
+#      dp/exclusive_rights_end_date:
+#      obsolete/exclusive_rights_contact:
+#      dp/exclusive_rights_notes:
+#      param_dict_type: ctd_parsed_param_dict
+#
+#    - row_type: DataProcess
+#      ID: log_salinity_PROC%03d
+#      owner_id: USER_1
+#      org_ids: MF_3
+#      data_process_definition_id: DPD_LOG
+#      in_data_product_id: scale_L2_salinity_DP%03d
+#      out_data_products: "{ 'none': 'bogus_output_%03d' }"
+#      configuration: "{ 'label': 'rate_%03d' }"
+#
+##    - row_type: DataProcess
+##      ID: log_density_PROC%03d
+##      owner_id: USER_1
+##      org_ids: MF_3
+##      data_process_definition_id: DPD_LOG
+##      in_data_product_id: scale_L2_density_DP%03d
+##      out_data_products: "{ 'none': 'bogus_output_%03d' }"
+##      configuration:

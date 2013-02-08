@@ -94,6 +94,7 @@ class AQMPConnector(BaseConnector):
 
     def stop_communication(self):
         log.debug('stop_communication')
+        # TODO: thread lock around connect/disconnect
         self.in_channel.close()
         self.connection.close()
 
