@@ -7,10 +7,10 @@ import traceback
 from ape.common.types import BaseApeAgent
 from ape.common.requests import PingRequest, PingResult, AddComponent, InventoryResult, InventoryRequest
 from pyon.ion.process import StandaloneProcess
-from pyon.util.log import log
 from threading import Thread
 from traceback import format_exc
-from pyon.util.log import log
+from ooi.logging import log
+import logging
 
 from ape.component.instrument_simulator import InstrumentSimulator
 
@@ -51,7 +51,9 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
 #            pass
         self.start_agent()
     def on_quit(self):
-        log.debug('on_quit called')
+        if log.isEnabledFor(logging.DEBUG):
+            import traceback
+            log.debug('on_quit called from:\n' + '\n'.join(['%s:%d %s'%(f,l,c) for f,l,m,c in traceback.extract_stack()]) )
         if self.keep_running:
             self.stop_agent()
     def on_stop(self):
