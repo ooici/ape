@@ -99,7 +99,6 @@ class SimpleManager(object):
             self.connection.ioloop.close()
         except:
             log.warn("failed to close ioloop", exc_info=True)
-            if self.connection and self.connection.ioloop:
-                log.debug("dict: %r", self.connection.ioloop.__dict__)
+            log.info("dict: %r", self.connection.ioloop.__dict__)
 #        self.connection.close()
 #        pass

@@ -27,15 +27,22 @@ class LoggingTransform(TransformDataProcess):
         self._label = self.CFG.get('label', 'rate_' + self._proc_name)
         self._next = self._rate = self.CFG.get('rate', 100)
         self._start = time.time()
+        self._time_to_first = False
+
         try:
             agent_name = self.CFG.get('ape_agent', APE_AGENT_NAME)
             self._agent = self.container.proc_manager.procs_by_name[agent_name]
         except:
-            log.warn('can not send reply messages, no ape agent found in container: %s', agent_name)
+            log.warn('%s: can not send reply messages, no ape agent found in container: %s', self._label, agent_name)
             self._agent = None
 
     def recv_packet(self, packet, stream_route, stream_id):
-        log.trace("received granule: %r from stream %r", packet, stream_id)
+        if self._time_to_first:
+            log.trace("%s: received granule: %r from stream %r", self._label, packet, stream_id)
+        else:
+            self._time_to_first = time.time() - self._start
+            log.info('%s: received first message after %f seconds', self._label, self._time_to_first)
+            self._agent.report(self._label, PerformanceResult({'first': elapsed}))
         n = self.increment_count()
         if n > self._next:
             with self._report_lock:
@@ -46,9 +53,9 @@ class LoggingTransform(TransformDataProcess):
                 self.report(elapsed)
 
     def report(self, elapsed):
-        log.info('received %d messages in %d seconds', self._rate, elapsed)
+        log.info('%s: received %d messages in %f seconds', self._label, self._rate, elapsed)
         if self._agent:
-            self._agent.report(self._label, PerformanceResult(elapsed))
+            self._agent.report(self._label, PerformanceResult({self._rate: elapsed}))
 
     def increment_count(self):
         with self._count_lock:

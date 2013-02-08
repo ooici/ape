@@ -67,13 +67,17 @@ class PerformanceListener(Listener):
         if isinstance(message.result, PerformanceResult):
             self.handle_message(message.component, message.result)
     def handle_message(self, component, result):
-        with self.lock:
-            if component not in self.latest_rates:
-                self.latest_rates[component] = []
-            rate_list = self.latest_rates[component]
-            rate_list[0:0] = [ result.data ]
-            if len(rate_list)>self.keep_history:
-                rate_list[self.keep_history:] = [ ]
+        value = result.data.values()
+        if 'first' in result.data:
+            log.info('transform %s got first granule in %f seconds', component, value[0])
+        else:
+            with self.lock:
+                if component not in self.latest_rates:
+                    self.latest_rates[component] = []
+                rate_list = self.latest_rates[component]
+                rate_list[0:0] = value
+                if len(rate_list)>self.keep_history:
+                    rate_list[self.keep_history:] = [ ]
     def get_rate(self, component, samples=1):
         with self.lock:
             if component not in self.latest_rates:
@@ -234,7 +238,7 @@ class SystemTest(object):
 #        log.info('executing _preload_template: %d', n)
         self._preload_template(config, xrange(n,n+1))
 #        log.info('executing start_devices: %d', n)
-        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1), catch_up_frequency)
+        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1), catch_up_frequency=catch_up_frequency)
 
     def _preload_path(self, config):
         name = config.get("name")
@@ -275,7 +279,7 @@ class SystemTest(object):
             manager.send_request(AddComponent(ims), agent_filter=agent_id(self.controller_agent), component_filter=component_id('AGENT'))
         return self.controller_agent
 
-    def start_devices(self, config, manager, nrange=None, catch_up_frequency=1, catch_up_time=1200):
+    def start_devices(self, config, manager, nrange=None, catch_up_frequency=1, catch_up_time=2400):
         """ start all devices defined in config file """
         range_str = config.get("start-devices.range").split('-')
         template = config.get("start-devices.devices")
@@ -317,9 +321,12 @@ class SystemTest(object):
             time.sleep(delay)
 
             if catch_up_frequency and n%catch_up_frequency==0:
+                catch_up_start = time.time()
                 self._wait_for_messages(n, catch_up_time)
+                elapsed = time.time() - catch_up_start
+                log.info('took %f sec for all devices to send 100 messages')
 
-    def _wait_for_messages(self, n=1, catch_up_time):
+    def _wait_for_messages(self, n=1, catch_up_time=3600):
         give_up_time = time.time() + catch_up_time
         while len(self.get_message_rates())<n:
             if time.time()>give_up_time:
