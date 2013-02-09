@@ -119,13 +119,14 @@ class SystemTest(object):
         # attach ape manager and listeners
         self._init_manager()
 
-    def reconnect_system(self):
+    def reconnect_system(self, cloudinitd=True):
         self.couch = reconnect_couch(self.config)
         self.rabbit = reconnect_rabbit(self.config)
         self._init_manager()
         self.es = reconnect_elasticsearch(self.config)
         self.graylog = reconnect_graylog(self.config)
-        self.system = reconnect_containers(config=self.config, couch=self.couch, rabbit=self.rabbit, graylog=self.graylog, elasticsearch=self.es)
+        self.system = reconnect_containers(config=self.config, couch=self.couch, rabbit=self.rabbit, graylog=self.graylog, elasticsearch=self.es, cloudinitd=cloudinitd)
+
 
     def init_system(self):
         self.preload_system(self.config)

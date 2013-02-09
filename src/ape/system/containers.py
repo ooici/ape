@@ -22,10 +22,10 @@ def launch_containers(config, couch, rabbit, graylog, elasticsearch):
     containers.launch_containers()
     return containers
 
-def reconnect_containers(config, couch, rabbit, graylog, elasticsearch):
+def reconnect_containers(config, couch, rabbit, graylog, elasticsearch, cloudinitd=True):
 #    print '*** containers.reconnect_containers'
     containers = Containers(config, couch, rabbit, graylog, elasticsearch)
-    containers.connect_cloudinitd(must_exist=True)
+    containers.connect_cloudinitd(must_exist=cloudinitd)
     return containers
 
 class Containers(object):

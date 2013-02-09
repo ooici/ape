@@ -47,7 +47,7 @@ def main():
 
     try:
         _step('connecting to agent')
-        test.reconnect_system()
+        test.reconnect_system(cloudinitd=False)
 
         _step('taking inventory')
         inventory = test.get_inventory()
