@@ -198,8 +198,8 @@ class Containers(object):
         print '*** ' + db_file + ' must exist? ' + repr(must_exist)
         if must_exist and not os.path.exists(db_file):
             raise ApeException('cannot reconnect to cloudinitd -- launch does not exist')
-#        print "=====>>>> about to connect to " + config
-        self.util = CloudInitD(home + '/.cloudinitd', config_file=config, db_name=self.name, boot=False, ready=False, fail_if_db_present=False)
+        else:
+            self.util = CloudInitD(home + '/.cloudinitd', config_file=config, db_name=self.name, boot=False, ready=False, fail_if_db_present=False)
 
     def wait_for_containers(self):
         print 'waiting...'
