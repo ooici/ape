@@ -29,8 +29,8 @@ class LoggingTransform(TransformDataProcess):
         self._start = time.time()
         self._time_to_first = False
 
+        agent_name = self.CFG.get('ape_agent', APE_AGENT_NAME)
         try:
-            agent_name = self.CFG.get('ape_agent', APE_AGENT_NAME)
             self._agent = self.container.proc_manager.procs_by_name[agent_name]
         except:
             log.warn('%s: can not send reply messages, no ape agent found in container: %s', self._label, agent_name)
@@ -42,7 +42,8 @@ class LoggingTransform(TransformDataProcess):
         else:
             self._time_to_first = time.time() - self._start
             log.info('%s: received first message after %f seconds', self._label, self._time_to_first)
-            self._agent.report(self._label, PerformanceResult({'first': elapsed}))
+            if self._agent:
+                self._agent.report(self._label, PerformanceResult({'first': self._time_to_first}))
         n = self.increment_count()
         if n > self._next:
             with self._report_lock:
