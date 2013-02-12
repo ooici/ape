@@ -18,7 +18,8 @@ class ConfigurableAgent(ConnectorDrivenAgent):
         config.update(bootstrap.CFG)
         config.update(self.CFG)
         self.connector = AQMPConnector(config)
-        self.agent_id = self.CFG.get('agent_id') or self.id
+        self.agent_id = self.CFG.get('unique_id') or self.id
+        log.info('ape agent id: %s', self.agent_id)
         for name in PROPERTY_NAMES:
             value = self.CFG.get(name)
             if value:

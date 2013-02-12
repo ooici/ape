@@ -325,13 +325,14 @@ class SystemTest(object):
                 catch_up_start = time.time()
                 self._wait_for_messages(n, catch_up_time)
                 elapsed = time.time() - catch_up_start
-                log.info('took %f sec for all devices to send 100 messages')
+                log.info('took %f sec for all devices to send message rates',elapsed)
 
     def _wait_for_messages(self, n=1, catch_up_time=3600):
         give_up_time = time.time() + catch_up_time
         while len(self.get_message_rates())<n:
             if time.time()>give_up_time:
-                raise ApeException("waited %d sec for message rates from %d devices, but only got rates from %d devices" % (catch_up_time, n, len(self.get_message_rates())))
+                log.warn("waited %d sec for message rates from %d devices, but only got rates from %d devices", catch_up_time, n, len(self.get_message_rates()))
+                return
             time.sleep(15)
 
     def start_transforms(self, config, manager, system, devices):

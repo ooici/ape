@@ -232,7 +232,7 @@ class Containers(object):
         #status = self.proc.wait()
         processes = [ ]
         current = { }
-        lines = iter(subprocess.check_output(cmd, shell=True, cwd=self.plan).split('\n'))
+        lines = iter(subprocess.check_output(cmd, shell=True).split('\n'))
         try:
             while True:
                 line = lines.next()

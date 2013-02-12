@@ -7,7 +7,7 @@ default is to log time elapsed per 100 granules (configurable).
 if an ape agent is found running in the same container, will also send a PerformanceResult message.
 '''
 
-from ion.core.process.transform import TransformDataProcess
+from ion.core.process.transform import TransformStreamListener
 from ooi.logging import log
 import threading
 import time
@@ -15,7 +15,7 @@ from ape.common.requests import PerformanceResult
 
 APE_AGENT_NAME='testing_agent'
 
-class LoggingTransform(TransformDataProcess):
+class LoggingTransform(TransformStreamListener):
     def __init__(self,*a,**b):
         super(LoggingTransform,self).__init__(*a,**b)
         self._count_lock = threading.Lock()
