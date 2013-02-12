@@ -4,7 +4,7 @@ from ape.agent.aqmp_connector import AQMPConnector
 from ape.agent.connector_agent import ConnectorDrivenAgent
 from ape.common.types import ApeException
 from pyon.core import bootstrap
-from pyon.util import log
+from ooi.logging import log
 
 PROPERTY_NAMES = ('role')
 
