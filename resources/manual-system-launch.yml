@@ -6,14 +6,14 @@
 
 couch:
   type: manual
-  hostname: pub-4-111.dev.oceanobservatories.org
+  hostname: pub-42-100.p.oceanobservatories.org
   username: sofa
   password: sofa
 
 rabbit:
   type: manual   # or manual or launch-generated
 #  hostname: localhost
-  hostname: pub-4-100.dev.oceanobservatories.org
+  hostname: pub-42-101.p.oceanobservatories.org
   username: guest
   password: guest
 
@@ -24,7 +24,7 @@ elasticsearch:
 
 graylog:
   type: manual   # or manual or launch-generated
-  hostname: pub-4-113.dev.oceanobservatories.org
+  hostname: pub-42-102.p.oceanobservatories.org
 
 containers:
   name: demo15
@@ -46,7 +46,7 @@ containers:
   # relative to launch-plan
   resource-config: profiles/nimbus-static.yml.example
 #  cloud-config: ../coi-services/res/launch/alpha.yml
-  cloud-config: ../coi-services/res/launch/ape-nimbus.yml
+  cloud-config: resources/ape-nimbus.yml
 
   # special branch that always includes ape agent in each pycc's deploy.yml
   recipes: https://github.com/newbrough/dt-data/tarball/ape_agent
@@ -113,11 +113,11 @@ preload:
       iai/name: Agent for scale test device %d
       iai/svr_addr: localhost
       iai/comms_method: ethernet
-      iai/comms_device_address: ec2-54-234-139-164.compute-1.amazonaws.com
+      iai/comms_device_address: ec2-184-72-91-83.compute-1.amazonaws.com
       #ec2-54-242-229-106.compute-1.amazonaws.com
       iai/comms_device_port: 12%03d
 #      comms_server_address: localhost
-      comms_server_address: ec2-54-234-139-164.compute-1.amazonaws.com
+      comms_server_address: ec2-184-72-91-83.compute-1.amazonaws.com
       #ec2-54-242-229-106.compute-1.amazonaws.com
       comms_server_port: 11%03d
       comms_server_cmd_port: 10%03d
@@ -458,7 +458,7 @@ preload:
       org_ids: MF_3
       data_process_definition_id: DPD_LOG
       in_data_product_id: scale_L2_salinity_DP%03d
-      out_data_products: "{ 'none': 'bogus_output_%03d' }"
+      out_data_products: "{ }"
       configuration: "{ 'label': 'rate_%03d' }"
 
 #    - row_type: DataProcess

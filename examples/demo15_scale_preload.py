@@ -18,7 +18,7 @@ def _step(msg):
     log.info('[%s] %s', time.ctime(), msg)
 
 def _exists():
-    log.info('-----> db exists? %r' % os.path.exists('/Users/jnewbrough/.cloudinitd/cloudinitd-demo13.db'))
+    log.info('-----> db exists? %r' % os.path.exists('/Users/jnewbrough/.cloudinitd/cloudinitd-demo15.db'))
 
 def _rates(data):
     if data:
@@ -62,7 +62,7 @@ def main():
         for n in nrange:
             _step("starting device %d"%n)
             device_begin = time.time()
-            test.init_device(config,n, catch_up_frequency=5)
+            test.init_device(config,n, catch_up_frequency=50)
             elapsed = time.time() - device_begin
             _step("completed device %d launch in %f seconds" % (n,elapsed))
             _rates(test.get_message_rates())

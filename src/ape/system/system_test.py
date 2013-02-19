@@ -67,6 +67,8 @@ class PerformanceListener(Listener):
         if isinstance(message.result, PerformanceResult):
             self.handle_message(message.component, message.result)
     def handle_message(self, component, result):
+        ## TODO: result.data.keys() is int # granules, values() is time in seconds
+        ## need to record rate -- currently assuming its always 100
         value = result.data.values()
         if 'first' in result.data:
             log.info('transform %s got first granule in %f seconds', component, value[0])
@@ -363,7 +365,13 @@ class SystemTest(object):
         return self.inventory.inventory
 
     def get_agents(self):
-        return self.inventory.inventory.keys()
+        out = self.inventory.inventory.keys()
+        while not out:
+            log.info('no inventory yet -- resending request')
+            self.manager.send_request(InventoryRequest(), component_filter=component_id('AGENT'))
+            out = self.inventory.inventory.keys()
+            time.sleep(30)
+        return out
 
     def get_message_rates(self, samples=1):
         out = { }

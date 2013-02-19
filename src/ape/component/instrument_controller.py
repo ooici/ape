@@ -85,7 +85,7 @@ class InstrumentController(ApeComponent):
             ServiceApi.instrument_agent_start(device_id)                                        # launches instrument agent (not yet driver)
         except Exception,e:
             log.warn('failed to start device %s: %s',device_id,e, exc_info=True)
-            self.report(OperationResult(result='failed to start device '+device_id), exception=e)
+            self.report(OperationResult(result='failed to start device '+device_id, exception=e))
             return
         wait_begin = time.time()
         all_times = { 'process': wait_begin-start_time }

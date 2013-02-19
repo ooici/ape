@@ -77,6 +77,7 @@ class Containers(object):
             data = yaml.load(f)
 
         # configure appropriately
+        data['iaas']['url'] = os.environ['EC2_URL']
         data['iaas']['key'] = os.environ['EC2_ACCESS_KEY']
         data['iaas']['secret'] = os.environ['EC2_SECRET_KEY']
         data['iaas']['base-image'] = self.config.get('containers.image')

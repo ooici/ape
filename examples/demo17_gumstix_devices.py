@@ -9,7 +9,7 @@ setup:
 """
 import gevent.monkey
 from ape.system.system_test import SystemTest
-from ape.manager.simple_manager import SimpleManager, InventoryListener, Listener
+from ape.common.messages import agent_id
 from ape.system.system_configuration import Configuration
 from pprint import pprint, pformat
 import logging
@@ -18,7 +18,7 @@ import time
 
 gevent.monkey.patch_all(aggressive=False)
 
-log = logging.getLogger('demo15')
+log = logging.getLogger('demo17')
 
 def _step(msg):
     log.info('[%s] %s', time.ctime(), msg)
@@ -29,7 +29,7 @@ def _rates(data):
         max_value = -5
         sum = 0
         for key in data:
-            value = 6000/data[key]
+            value = 60*key/data[key]
             min_value = min(min_value,value)
             max_value = max(max_value,value)
             sum += value
@@ -47,7 +47,8 @@ def main():
 
     try:
         _step('connecting to agent')
-        test.reconnect_system(cloudinitd=False)
+        test.reconnect_system(cloudinitd=False, filter=agent_id('server'))
+        test.system = None
 
         _step('taking inventory')
         inventory = test.get_inventory()
@@ -64,9 +65,10 @@ def main():
         for n in nrange:
             _step("starting device %d"%n)
             device_begin = time.time()
-            test.init_device(config,n, catch_up_frequency=1)
+            test.init_device(config,n, catch_up_frequency=1000) # some tests do not run logging_transform
             elapsed = time.time() - device_begin
             _step("completed device %d launch in %f seconds" % (n,elapsed))
+            time.sleep(120)
             _rates(test.get_message_rates())
 
         _step('performing test')
