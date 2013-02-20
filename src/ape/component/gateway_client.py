@@ -746,6 +746,8 @@ def service_gateway_get(service_name, operation_name, params={}):
         raise
 
 def render_service_gateway_response(service_gateway_resp, raw_return=None):
+    log.info('response: %r\ncontent: %s\npretty: %s', service_gateway_resp, service_gateway_resp.content,
+        pprint.pformat(json.loads(service_gateway_resp.content)))
     if service_gateway_resp.status_code == 200:
         resp = json.loads(service_gateway_resp.content)
         try:
