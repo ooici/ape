@@ -14,6 +14,7 @@ from cloudinitd.exceptions import APIUsageException, ConfigException
 from ape.manager.simple_manager import SimpleManager
 from ape.common.types import ApeException
 import time
+from ooi.logging import log
 
 def launch_containers(config, couch, rabbit, graylog, elasticsearch):
 #    print '*** containers.launch_containers'
@@ -68,11 +69,13 @@ class Containers(object):
     def _prepare_install_software(self):
         cmd = self.config.get('containers.software.copy-command')
         if cmd:
+            log.debug('executing: %s', cmd)
             subprocess.check_call(cmd, shell=True)
 
     def _modify_cloud_config(self):
         """ copy template cloud config file and modify """
         file = os.path.join(self.source_directory, self.config.get('containers.resource-config'))
+        log.debug('configuring: %s', file)
         with open(file, 'r') as f:
             data = yaml.load(f)
 
@@ -109,7 +112,9 @@ class Containers(object):
             yaml.dump(data, f, default_flow_style=False)
 
     def _modify_launch(self):
-        with open(self.config.get('containers.cloud-config'), 'r') as f:
+        file = self.config.get('containers.cloud-config')
+        log.debug('configuring: %s', file)
+        with open(file, 'r') as f:
             data = yaml.load(f)
 
         all_engines_config = self.config.get('containers.execution-engines')
@@ -131,6 +136,7 @@ class Containers(object):
     def _modify_deploy(self):
         # read template
         src = self.config.get('services.deploy-file')
+        log.debug('configuring: %s', src)
         with open(src, 'r') as f:
             data = yaml.load(f)
         # keep subset of existing apps from deploy file
@@ -173,7 +179,7 @@ class Containers(object):
         cmd = 'bin/generate-plan --profile %s --rel %s --launch %s %s' % (
                     os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
                     os.path.abspath(self.launch_config), os.path.abspath(self.plan))
-#        print '====>>> about to execute: ' + cmd
+        log.debug('executing: %s', cmd)
         code = subprocess.call(cmd, shell=True, cwd=self.source_directory)
         if code!=0:
             raise ApeException('failed to execute ' + cmd)
@@ -187,6 +193,7 @@ class Containers(object):
         # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
         #self.proc = subprocess.Popen(cmd, shell=True, cwd=self.plan)
         #status = self.proc.wait()
+        log.debug('executing: %s', cmd)
         subprocess.check_call(cmd, shell=True, cwd=self.plan)
 
         file = os.path.join(os.path.abspath(self.plan), 'launch.conf')
@@ -233,6 +240,7 @@ class Containers(object):
         #status = self.proc.wait()
         processes = [ ]
         current = { }
+        log.debug('executing: %s', cmd)
         lines = iter(subprocess.check_output(cmd, shell=True).split('\n'))
         try:
             while True:

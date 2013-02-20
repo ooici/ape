@@ -741,11 +741,14 @@ def service_gateway_get(service_name, operation_name, params={}):
     resp = requests.get(build_get_request(service_name, operation_name, params))
     if resp.status_code == 200:
         resp = json.loads(resp.content)
-
-        if type(resp) == dict:
-            return resp['data']['GatewayResponse']
-        elif type(resp) == list:
-            return resp['data']['GatewayResponse'][0]
+        try:
+            if type(resp) == dict:
+                return resp['data']['GatewayResponse']
+            elif type(resp) == list:
+                return resp[0]['data']['GatewayResponse']
+        except:
+            log.error('failed to parse gateway response\n%s', resp.content)
+            raise
 
 def build_post_request(service_name, operation_name, params={}):
     url = '%s/%s/%s' % (get_service_url(), service_name, operation_name)
