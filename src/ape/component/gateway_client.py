@@ -739,16 +739,23 @@ def build_get_request(service_name, operation_name, params={}):
 
 def service_gateway_get(service_name, operation_name, params={}):
     resp = requests.get(build_get_request(service_name, operation_name, params))
-    if resp.status_code == 200:
-        resp = json.loads(resp.content)
+
+def render_service_gateway_response(service_gateway_resp, raw_return=None):
+    if service_gateway_resp.status_code == 200:
+        resp = json.loads(service_gateway_resp.content)
         try:
-            if type(resp) == dict:
-                return resp['data']['GatewayResponse']
-            elif type(resp) == list:
-                return resp[0]['data']['GatewayResponse']
-        except:
-            log.error('failed to parse gateway response\n%s', resp.content)
-            raise
+            response = resp['data']['GatewayResponse']
+
+            if raw_return: # return actor_id, valid_until, is_registered tuple/list
+                return response
+            if isinstance(response, list):
+                return response[0]
+            else:
+                return response
+        except Exception, e:
+            return resp['data']
+    else:
+        return json.dumps(service_gateway_resp.content)
 
 def build_post_request(service_name, operation_name, params={}):
     url = '%s/%s/%s' % (get_service_url(), service_name, operation_name)
