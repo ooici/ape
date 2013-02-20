@@ -739,6 +739,11 @@ def build_get_request(service_name, operation_name, params={}):
 
 def service_gateway_get(service_name, operation_name, params={}):
     resp = requests.get(build_get_request(service_name, operation_name, params))
+    try:
+        return render_service_gateway_response(resp)
+    except:
+        log.error('gateway error with response %r', resp, exc_info=True)
+        raise
 
 def render_service_gateway_response(service_gateway_resp, raw_return=None):
     if service_gateway_resp.status_code == 200:
