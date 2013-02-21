@@ -56,9 +56,11 @@ class InstrumentController(ApeComponent):
     def list_instruments(self):
         """ perform lookup used by ion-ux to generate list of devices """
         out = ServiceApi.find_by_resource_type('InstrumentDevice')
+        log.trace('out: %r', out)
         while isinstance(out[0], list):
             log.warn('have list of lists -- should have list of devices!')
             out = out[0]
+            log.trace('out: %r', out)
         return out
 
     def find_instrument(self, name):

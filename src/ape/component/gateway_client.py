@@ -172,8 +172,8 @@ class ServiceApi(object):
         if device_id in AGENT_ID_CACHE:
             return AGENT_ID_CACHE[device_id]
         result = service_gateway_get('resource_registry', 'find_objects', params={'subject': device_id, 'predicate':'hasAgentInstance'})
-        log.info("have agent id result: %r (%d in cache)", result, len(AGENT_ID_CACHE))
-        agent_id = result[0][0]['_id']
+        log.debug("have agent id result: %r (%d in cache)", result, len(AGENT_ID_CACHE))
+        agent_id = result[0]['_id']
         AGENT_ID_CACHE[device_id] = agent_id
         return agent_id
 
@@ -213,7 +213,7 @@ class ServiceApi(object):
     @staticmethod
     def find_all_user_infos():
         # TODO is this what we want here?
-        user_infos = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'UserInfo'})[0]
+        user_infos = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'UserInfo'})
         return user_infos
 
     @staticmethod
@@ -231,7 +231,7 @@ class ServiceApi(object):
     @staticmethod
     def find_users():
         resp = []
-        user_identities = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'UserIdentity'})[0]
+        user_identities = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'UserIdentity'})
         for user_identity in user_identities:
             user_info = ServiceApi.find_user_info(user_identity["_id"])
             user_identity["user_info"] = user_info
@@ -245,7 +245,7 @@ class ServiceApi(object):
 
         if user.has_key('_id'):
             # CREDENTIALS
-            user['credentials'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': user_id, 'predicate': 'hasCredentials', 'object_type': 'UserCredentials'})[0]
+            user['credentials'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': user_id, 'predicate': 'hasCredentials', 'object_type': 'UserCredentials'})
 
             # USER INFO
             user['user_info'] = ServiceApi.find_user_info(user_id)
@@ -263,11 +263,11 @@ class ServiceApi(object):
             user['policies'] = service_gateway_get('policy_management', 'find_resource_policies', params={'resource_id': user_id})
 
             # OWNED RESOURCES , 'id_only': False
-            user['owned_resources'] = service_gateway_get('resource_registry', 'find_subjects', params={'predicate': 'hasOwner', 'object': user_id})[0]
+            user['owned_resources'] = service_gateway_get('resource_registry', 'find_subjects', params={'predicate': 'hasOwner', 'object': user_id})
 
             # EVENTS
             user['recent_events'] = []
-            user['user_requests'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': user_id, 'predicate': 'hasRequest'})[0]
+            user['user_requests'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': user_id, 'predicate': 'hasRequest'})
 
         return user
 
@@ -308,13 +308,13 @@ class ServiceApi(object):
                 observatory['org_id'] = org_id
 
                 # GENERAL
-                # observatory['data_products'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProduct'})[0]
-                # observatory['platforms'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformDevice'})[0]
-                # observatory['instruments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentDevice'})[0]
+                # observatory['data_products'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProduct'})
+                # observatory['platforms'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformDevice'})
+                # observatory['instruments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentDevice'})
                 #     
                 # # ADMINISTRATION            
                 # observatory['participants'] = []
-                # participants = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasMembership'})[0]
+                # participants = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasMembership'})
                 # 
                 # for participant in participants:
                 #     participant["user_info"] = ServiceApi.find_user_info(participant["_id"])
@@ -323,16 +323,16 @@ class ServiceApi(object):
                 # observatory['roles'] = service_gateway_get('org_management', 'find_org_roles', params={'org_id': org_id})
                 # 
                 # # SOFTWARE
-                # observatory['instrument_agents'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentAgent'})[0]
-                # observatory['data_process_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProcessDefinition'})[0]
+                # observatory['instrument_agents'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentAgent'})
+                # observatory['data_process_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProcessDefinition'})
                 # 
                 # # EVENTS
                 # observatory['recent_events'] = []
                 # observatory['user_requests'] = service_gateway_get('org_management', 'find_requests', params={'org_id': org_id})
                 # 
                 # # DEFINITIONS
-                # observatory['platform_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformModel'})[0]
-                # observatory['instrument_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentModel'})[0]
+                # observatory['platform_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformModel'})
+                # observatory['instrument_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentModel'})
                 #         
                 # # FRAMES OF REFERENCE
                 # observatory['subordinates'] = service_gateway_get('marine_facility_management', 'find_subordinate_frames_of_reference', params={'input_resource_id': marine_facility_id})
@@ -358,13 +358,13 @@ class ServiceApi(object):
     #             marine_facility['org_id'] = org_id
     # 
     #         # GENERAL
-    #         marine_facility['data_products'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProduct'})[0]
-    #         marine_facility['platforms'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformDevice'})[0]
-    #         marine_facility['instruments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentDevice'})[0]
+    #         marine_facility['data_products'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProduct'})
+    #         marine_facility['platforms'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformDevice'})
+    #         marine_facility['instruments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentDevice'})
     # 
     #         # ADMINISTRATION            
     #         marine_facility['participants'] = []
-    #         participants = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasMembership'})[0]
+    #         participants = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasMembership'})
     #         
     #         for participant in participants:
     #             participant["user_info"] = ServiceApi.find_user_info(participant["_id"])
@@ -373,16 +373,16 @@ class ServiceApi(object):
     #         marine_facility['roles'] = service_gateway_get('org_management', 'find_org_roles', params={'org_id': org_id})
     #         
     #         # SOFTWARE
-    #         marine_facility['instrument_agents'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentAgent'})[0]
-    #         marine_facility['data_process_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProcessDefinition'})[0]
+    #         marine_facility['instrument_agents'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentAgent'})
+    #         marine_facility['data_process_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'DataProcessDefinition'})
     #         
     #         # EVENTS
     #         marine_facility['recent_events'] = []
     #         marine_facility['user_requests'] = service_gateway_get('org_management', 'find_requests', params={'org_id': org_id})
     #         
     #         # DEFINITIONS
-    #         marine_facility['platform_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformModel'})[0]
-    #         marine_facility['instrument_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentModel'})[0]
+    #         marine_facility['platform_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'PlatformModel'})
+    #         marine_facility['instrument_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': org_id, 'predicate': 'hasResource', 'object_type': 'InstrumentModel'})
     #     
     #         # FRAMES OF REFERENCE
     #         marine_facility['subordinates'] = service_gateway_get('marine_facility_management', 'find_subordinate_frames_of_reference', params={'input_resource_id': marine_facility_id})
@@ -401,17 +401,17 @@ class ServiceApi(object):
 
         if platform.has_key('_id'):
             # DEPLOYMENTS
-            platform['primary_deployment'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': platform_device_id, 'predicate': 'hasPrimaryDeployment', 'object_type': 'LogicalPlatform', 'id_only': False})[0]
-            platform['deployments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': platform_device_id, 'predicate': 'hasDeployment', 'object_type': 'PlatformDevice', 'id_only': False})#[0]
+            platform['primary_deployment'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': platform_device_id, 'predicate': 'hasPrimaryDeployment', 'object_type': 'LogicalPlatform', 'id_only': False})
+            platform['deployments'] = [ service_gateway_get('resource_registry', 'find_objects', params={'subject': platform_device_id, 'predicate': 'hasDeployment', 'object_type': 'PlatformDevice', 'id_only': False}) ]
             print 'xxxx: ', platform['deployments']
 
             # ADMINISTRATION        
             platform['policies'] = service_gateway_get('policy_management', 'find_resource_policies', params={'resource_id': platform_device_id})
-            # platform['instrument_agents'] = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'InstrumentAgent'})[0]
+            # platform['instrument_agents'] = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'InstrumentAgent'})
 
             # INSTRUMENTS - ERROR WITH PRELOAD DATA
-            # logical_platform_id = platform['deployments'][0]['_id']
-            # logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform_id, 'predicate': 'hasInstrument', 'id_only': False})[0]
+            # logical_platform_id = platform['deployments']['_id']
+            # logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform_id, 'predicate': 'hasInstrument', 'id_only': False})
             platform['instruments'] = service_gateway_get('instrument_management', 'find_instrument_device_by_platform_device', params={'platform_device_id': platform_device_id})
 
             # EVENTS
@@ -419,8 +419,8 @@ class ServiceApi(object):
             platform['user_requests'] = []
 
             # FRAMES OF REFERENCE
-            # platform['subordinates'] = service_gateway_get('marine_facility_management', 'find_subordinate_frames_of_reference', params={'input_resource_id': platform['deployments'][0]['_id']})
-            # platform['superiors'] = service_gateway_get('marine_facility_management', 'find_superior_frames_of_reference', params={'input_resource_id': platform['deployments'][0]['_id']})
+            # platform['subordinates'] = service_gateway_get('marine_facility_management', 'find_subordinate_frames_of_reference', params={'input_resource_id': platform['deployments']['_id']})
+            # platform['superiors'] = service_gateway_get('marine_facility_management', 'find_superior_frames_of_reference', params={'input_resource_id': platform['deployments']['_id']})
 
             # OWNER
             platform['owner'] = ServiceApi.find_owner(platform_device_id)
@@ -438,7 +438,7 @@ class ServiceApi(object):
 
         if platform_model.has_key('_id'):
             # RELATED DEVICES
-            platform_model['related_devices'] = service_gateway_get('resource_registry', 'find_subjects', params={'subject_type': 'PlatformDevice', 'predicate': 'hasModel', 'object': platform_model_id, 'id_only': False})[0]
+            platform_model['related_devices'] = service_gateway_get('resource_registry', 'find_subjects', params={'subject_type': 'PlatformDevice', 'predicate': 'hasModel', 'object': platform_model_id, 'id_only': False})
 
             # OWNER
             platform_model['owner'] = ServiceApi.find_owner(platform_model_id)
@@ -457,7 +457,7 @@ class ServiceApi(object):
 
         if instrument.has_key('_id'):
             # DATA PRODUCTS
-            instrument['data_products'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasOutputProduct', 'id_only': False})[0]
+            instrument['data_products'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasOutputProduct', 'id_only': False})
             for data_product in instrument['data_products']:
                 if 'raw' in data_product['name'].lower():
                     instrument['raw_data_product'] = data_product
@@ -473,19 +473,19 @@ class ServiceApi(object):
                     # instrument['visualization'] = service_gateway_get('visualization', 'get_google_dt', params={'data_product_id': instrument['parsed_data_product']['_id']})
 
                     # RELATED MODEL
-                    instrument['related_model'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasModel', 'object_type': 'InstrumentModel', 'id_only': False})[0][0]
+                    instrument['related_model'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasModel', 'object_type': 'InstrumentModel', 'id_only': False})[0]
 
                     # DEPLOYMENTS
-                    instrument['primary_deployment'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasPrimaryDeployment', 'object_type': 'LogicalInstrument', 'id_only': False})[0]
+                    instrument['primary_deployment'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasPrimaryDeployment', 'object_type': 'LogicalInstrument', 'id_only': False})
 
                     # NOT WORKING 5/24/2012
-                    # instrument['deployments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasDeployment', 'object_type': 'LogicalInstrument', 'id_only': False})[0]
+                    # instrument['deployments'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasDeployment', 'object_type': 'LogicalInstrument', 'id_only': False})
 
                     # ADMINISTRATION
-                    instrument['instrument_agent'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasAgentInstance', 'object_type': 'InstrumentAgentInstance', 'id_only': False})[0][0]
+                    instrument['instrument_agent'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_device_id, 'predicate': 'hasAgentInstance', 'object_type': 'InstrumentAgentInstance', 'id_only': False})[0]
 
                     # FRAME OF REFERENCES
-                    # instrument['superiors'] = service_gateway_get('observatory_management', 'find_superior_frames_of_reference', params={'input_resource_id': instrument['deployments'][0]["_id"]})
+                    # instrument['superiors'] = service_gateway_get('observatory_management', 'find_superior_frames_of_reference', params={'input_resource_id': instrument['deployments']["_id"]})
 
                     # OWNER
                     instrument['owner'] = ServiceApi.find_owner(instrument_device_id)
@@ -501,10 +501,10 @@ class ServiceApi(object):
 
         if instrument_model.has_key('_id'):
             # RELATED INSTRUMENTS
-            instrument_model['related_instruments'] = service_gateway_get('resource_registry', 'find_subjects', params={'subject_type': 'InstrumentDevice', 'predicate': 'hasModel', 'object': instrument_model_id, 'id_only': False})[0]
+            instrument_model['related_instruments'] = service_gateway_get('resource_registry', 'find_subjects', params={'subject_type': 'InstrumentDevice', 'predicate': 'hasModel', 'object': instrument_model_id, 'id_only': False})
 
             # INSTRUMENT AGENTS
-            instrument_model['instrument_agents'] = service_gateway_get('resource_registry', 'find_subjects', params={'subject_type': 'InstrumentAgent', 'predicate': 'hasModel', 'object': instrument_model_id, 'id_only': False})[0]
+            instrument_model['instrument_agents'] = service_gateway_get('resource_registry', 'find_subjects', params={'subject_type': 'InstrumentAgent', 'predicate': 'hasModel', 'object': instrument_model_id, 'id_only': False})
 
             # OWNER
             instrument_model['owner'] = ServiceApi.find_owner(instrument_model_id)
@@ -520,13 +520,13 @@ class ServiceApi(object):
 
         if instrument_agent.has_key('_id'):
         # RELATED INSTRUMENT MODELS
-            instrument_agent['related_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_agent_id, 'predicate': 'hasModel', 'id_only': False})[0]
+            instrument_agent['related_models'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_agent_id, 'predicate': 'hasModel', 'id_only': False})
 
             # RELATED INSTRUMENT AGENT INSTANCES
-            instrument_agent['related_instances'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_agent_id, 'predicate': 'hasInstance', 'id_only': False})[0]
+            instrument_agent['related_instances'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_agent_id, 'predicate': 'hasInstance', 'id_only': False})
 
             # RELATED DATA PROCESS DEFINITIONS
-            instrument_agent['related_process_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_agent_id, 'predicate': 'hasProcessDefinition', 'id_only': False})[0]
+            instrument_agent['related_process_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': instrument_agent_id, 'predicate': 'hasProcessDefinition', 'id_only': False})
 
             # OWNER
             instrument_agent['owner'] = ServiceApi.find_owner(instrument_agent_id)
@@ -542,11 +542,11 @@ class ServiceApi(object):
 
         if data_process_definition.has_key('_id'):
             # STREAM DEFINITIONS
-            data_process_definition['input_stream_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': data_process_definition_id, 'predicate': 'hasInputStreamDefinition', 'object_type': 'StreamDefinition', 'id_only': False})[0]
-            data_process_definition['output_stream_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': data_process_definition_id, 'predicate': 'hasStreamDefinition', 'object_type': 'StreamDefinition', 'id_only': False})[0]
+            data_process_definition['input_stream_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': data_process_definition_id, 'predicate': 'hasInputStreamDefinition', 'object_type': 'StreamDefinition', 'id_only': False})
+            data_process_definition['output_stream_definitions'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': data_process_definition_id, 'predicate': 'hasStreamDefinition', 'object_type': 'StreamDefinition', 'id_only': False})
 
             # USED IN
-            data_process_definition['data_process'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': data_process_definition_id, 'predicate': 'hasInstance', 'object_type': 'DataProcess', 'id_only': False})[0]
+            data_process_definition['data_process'] = service_gateway_get('resource_registry', 'find_objects', params={'subject': data_process_definition_id, 'predicate': 'hasInstance', 'object_type': 'DataProcess', 'id_only': False})
 
             # OWNER
             data_process_definition['owner'] = ServiceApi.find_owner(data_process_definition_id)
@@ -558,7 +558,7 @@ class ServiceApi(object):
 
     @staticmethod
     def find_data_products():
-        data_products = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'DataProduct'})[0]
+        data_products = service_gateway_get('resource_registry', 'find_resources', params={'restype': 'DataProduct'})
         return data_products
 
     @staticmethod
@@ -573,10 +573,10 @@ class ServiceApi(object):
             # instrument['visualization'] = service_gateway_get('visualization', 'get_google_dt', params={'data_product_id': data_product_id})
 
             # INPUT PROCESS
-            data_product['input_process'] = service_gateway_get('resource_registry', 'find_subjects', params={'predicate': 'hasInputProduct', 'object': data_product_id, 'id_only': False})[0]
+            data_product['input_process'] = service_gateway_get('resource_registry', 'find_subjects', params={'predicate': 'hasInputProduct', 'object': data_product_id, 'id_only': False})
 
             # OUTPUT PROCESS
-            data_product['output_process'] = service_gateway_get('resource_registry', 'find_subjects', params={'predicate': 'hasOutputProduct', 'object': data_product_id, 'id_only': False})[0]
+            data_product['output_process'] = service_gateway_get('resource_registry', 'find_subjects', params={'predicate': 'hasOutputProduct', 'object': data_product_id, 'id_only': False})
 
             # FRAME OF REFERENCES TBD
 
@@ -610,7 +610,7 @@ class ServiceApi(object):
     def find_qualified_deploy_path(resource_id):
         # Only works for objects that satisfy the 'hasDeployment' association check
         resource = [service_gateway_get('resource_registry', 'read', params={'object_id': resource_id})]
-        deployment = service_gateway_get('resource_registry', 'find_objects', params={'subject': resource_id, 'predicate': 'hasDeployment', 'id_only': False})[0]
+        deployment = service_gateway_get('resource_registry', 'find_objects', params={'subject': resource_id, 'predicate': 'hasDeployment', 'id_only': False})
         if len(deployment) == 0:
             return resource['type_'] + '::' + resource['name'], [{'name': resource['name'], 'id': resource['_id'], 'type': resource['type_']}]
 
@@ -655,21 +655,21 @@ class ServiceApi(object):
                 if leaf_type == 'MarineFacility':
                     ret_list.append([marine_facility_dict])
                 else:
-                    sites = service_gateway_get('resource_registry', 'find_objects', params={'subject': marine_facility['_id'], 'predicate': 'hasSite', 'id_only': False})[0]
+                    sites = service_gateway_get('resource_registry', 'find_objects', params={'subject': marine_facility['_id'], 'predicate': 'hasSite', 'id_only': False})
                     if len(sites) > 0:
                         for site in sites:
                             site_dict = {'name': site['name'], 'id': site['_id'], 'type': 'Site'}
                             if leaf_type == 'Site':
                                 ret_list.append([marine_facility_dict, site_dict])
                             else:
-                                logical_platforms = service_gateway_get('resource_registry', 'find_objects', params={'subject': site['_id'], 'predicate': 'hasPlatform', 'id_only': False})[0]
+                                logical_platforms = service_gateway_get('resource_registry', 'find_objects', params={'subject': site['_id'], 'predicate': 'hasPlatform', 'id_only': False})
                                 if len(logical_platforms) > 0:
                                     for logical_platform in logical_platforms:
                                         logical_platform_dict = {'name': logical_platform['name'], 'id': logical_platform['_id'], 'type': 'LogicalPlatform'}
                                         if leaf_type == 'LogicalPlatform':
                                             ret_list.append([marine_facility_dict, site_dict, logical_platform_dict])
                                         else:
-                                            logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform['_id'], 'predicate': 'hasInstrument', 'id_only': False})[0]
+                                            logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform['_id'], 'predicate': 'hasInstrument', 'id_only': False})
                                             if len(logical_instruments) > 0:
                                                 for logical_instrument in logical_instruments:
                                                     logical_instrument_dict = {'name': logical_instrument['name'], 'id': logical_instrument['_id'], 'type': 'LogicalInstrument'}
@@ -684,14 +684,14 @@ class ServiceApi(object):
                 if leaf_type == 'Site':
                     ret_list.append([site_dict])
                 else:
-                    logical_platforms = service_gateway_get('resource_registry', 'find_objects', params={'subject': site['_id'], 'predicate': 'hasPlatform', 'id_only': False})[0]
+                    logical_platforms = service_gateway_get('resource_registry', 'find_objects', params={'subject': site['_id'], 'predicate': 'hasPlatform', 'id_only': False})
                     if len(logical_platforms) > 0:
                         for logical_platform in logical_platforms:
                             logical_platform_dict = {'name': logical_platform['name'], 'id': logical_platform['_id'], 'type': 'LogicalPlatform'}
                             if leaf_type == 'LogicalPlatform':
                                 ret_list.append([site_dict, logical_platform_dict])
                             else:
-                                logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform['_id'], 'predicate': 'hasInstrument', 'id_only': False})[0]
+                                logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform['_id'], 'predicate': 'hasInstrument', 'id_only': False})
                                 if len(logical_instruments) > 0:
                                     for logical_instrument in logical_instruments:
                                         logical_instrument_dict = {'name': logical_instrument['name'], 'id': logical_instrument['_id'], 'type': 'LogicalInstrument'}
@@ -704,7 +704,7 @@ class ServiceApi(object):
                 if leaf_type == 'LogicalPlatform':
                     ret_list.append([logical_platform_dict])
                 else:
-                    logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform['_id'], 'predicate': 'hasInstrument', 'id_only': False})[0]
+                    logical_instruments = service_gateway_get('resource_registry', 'find_objects', params={'subject': logical_platform['_id'], 'predicate': 'hasInstrument', 'id_only': False})
                     if len(logical_instruments) > 0:
                         for logical_instrument in logical_instruments:
                             logical_instrument_dict = {'name': logical_instrument['name'], 'id': logical_instrument['_id'], 'type': 'LogicalInstrument'}
@@ -717,16 +717,16 @@ class ServiceApi(object):
 
     @staticmethod
     def find_by_resource_type(resource_type):
-        return service_gateway_get('resource_registry', 'find_resources', params={'restype': resource_type})[0]
+        return service_gateway_get('resource_registry', 'find_resources', params={'restype': resource_type})
 
     @staticmethod
     def find_owner(resource_id):
         # TODO remove later
         try:
-            owner_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': resource_id, 'predicate': 'hasOwner'})[0][0]['_id']
+            owner_id = service_gateway_get('resource_registry', 'find_objects', params={'subject': resource_id, 'predicate': 'hasOwner'})[0]['_id']
         except:
             return {"contact": {"name": "Owen Ownerrep", "email": "owenownerrep@gmail.com"}}
-        return service_gateway_get('resource_registry', 'find_objects', params={'subject': owner_id, 'predicate': 'hasInfo', 'id_only': False})[0][0]
+        return service_gateway_get('resource_registry', 'find_objects', params={'subject': owner_id, 'predicate': 'hasInfo', 'id_only': False})[0]
 
 def build_get_request(service_name, operation_name, params={}):
     url = '%s/%s/%s' % (get_service_url(), service_name, operation_name)
@@ -746,23 +746,34 @@ def service_gateway_get(service_name, operation_name, params={}):
         raise
 
 def render_service_gateway_response(service_gateway_resp, raw_return=None):
-    log.info('response: %r\ncontent: %s\npretty: %s', service_gateway_resp, service_gateway_resp.content,
-        pprint.pformat(json.loads(service_gateway_resp.content)))
+    log.trace('1 response: %r', service_gateway_resp)
     if service_gateway_resp.status_code == 200:
         resp = json.loads(service_gateway_resp.content)
         try:
-            response = resp['data']['GatewayResponse']
-            log.debug('gateway repsponse extracted is %s (raw? %r)', response.__class__.__name__, raw_return)
-            if raw_return: # return actor_id, valid_until, is_registered tuple/list
+            log.trace('2 loads: %r', resp)
+            data = resp['data']
+            log.trace('3 data: %r', data)
+            response = data['GatewayResponse']
+            log.trace('4 response: %r', response)
+            if raw_return:
+                log.trace('5 returning')
                 return response
-            if isinstance(response, list):
-                return response[0]
+            elif isinstance(response, list):
+                zero = response[0]
+                log.trace('5 returning zero: %r', zero)
+                return zero
             else:
+                log.trace('5 returning')
                 return response
         except Exception, e:
-            return resp['data']
+            log.error('exception extracting: %s', e, exc_info=True)
+            data = resp['data']
+            log.trace('3 data: %r', data)
+            return data
     else:
-        return json.dumps(service_gateway_resp.content)
+        dumps = json.dumps(service_gateway_resp.content)
+        log.trace('2 dumps: %r', dumps)
+        return
 
 def build_post_request(service_name, operation_name, params={}):
     url = '%s/%s/%s' % (get_service_url(), service_name, operation_name)
