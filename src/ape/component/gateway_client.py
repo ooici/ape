@@ -752,7 +752,7 @@ def render_service_gateway_response(service_gateway_resp, raw_return=None):
         resp = json.loads(service_gateway_resp.content)
         try:
             response = resp['data']['GatewayResponse']
-
+            log.debug('gateway repsponse extracted is %s (raw? %r)', response.__class__.__name__, raw_return)
             if raw_return: # return actor_id, valid_until, is_registered tuple/list
                 return response
             if isinstance(response, list):
