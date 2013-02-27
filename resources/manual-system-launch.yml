@@ -48,12 +48,15 @@ containers:
 #  cloud-config: ../coi-services/res/launch/alpha.yml
   cloud-config: resources/ape-nimbus.yml
 
+  logging-config: resources/logging-eeagent.yml
+
   # special branch that always includes ape agent in each pycc's deploy.yml
   recipes: https://github.com/newbrough/dt-data/tarball/ape_agent
 
+# need ~14 slots per device
   execution-engines:
     default:
-      slots: 85 # number of slots per container
+      slots: 50 # number of slots per container
       replicas: 6 # number of containers per VM
       base_need: 1 # minimum number of VMs to provision
     services:
@@ -151,6 +154,36 @@ preload:
 
     - row_type: DataProductLink
       data_product_id: scale_instrument_DP%03d
+      input_resource_id: scaleID%03d
+      resource_type: InstrumentDevice
+      create_stream: FALSE
+
+    - row_type: DataProduct
+      ID: scale_instrument_raw_DP%03d
+      owner_id: USER_1
+      lcstate: DEPLOYED_AVAILABLE
+      org_ids: MF_3
+      stream_def_id: StreamDef11
+      persist_metadata: TRUE
+      persist_data: TRUE
+      dp/name: scale test raw CTD %d
+      dp/description: raw stream from SBE37 simulator
+      contact_ids: M_MANAGER,O_OWNERREP
+      geo_constraint_id: GEO2
+      coordinate_system_id: SUBMERGED
+      dp/processing_level_code: Raw
+      dp/quality_control_level: a
+      dp/ISO_spatial_representation_type: textTable
+      available_formats: csv,netcdf
+      dp/license_uri:
+      dp/exclusive_rights_status: Public
+      dp/exclusive_rights_end_date:
+      obsolete/exclusive_rights_contact:
+      dp/exclusive_rights_notes:
+      param_dict_type: raw
+
+    - row_type: DataProductLink
+      data_product_id: scale_instrument_raw_DP%03d
       input_resource_id: scaleID%03d
       resource_type: InstrumentDevice
       create_stream: FALSE

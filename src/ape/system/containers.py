@@ -174,11 +174,15 @@ class Containers(object):
 #            raise Exception('failed to execute ' + cmd)
 
     def _generate_plan(self):
-        yaml_dir = os.path.dirname(os.path.dirname(yaml.__file__))
-#        pathcmd = 'export PYTHONPATH=$PYTHONPATH:' + yaml_dir
-        cmd = 'bin/generate-plan --profile %s --rel %s --launch %s %s' % (
-                    os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
-                    os.path.abspath(self.launch_config), os.path.abspath(self.plan))
+        logconfig = self.config.get('containers.logging-config')
+        if logconfig:
+            cmd = 'bin/generate-plan --profile %s --rel %s --launch %s --logconfig %s %s' % (
+                        os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
+                        os.path.abspath(self.launch_config), os.path.abspath(logconfig), os.path.abspath(self.plan))
+        else:
+            cmd = 'bin/generate-plan --profile %s --rel %s --launch %s %s' % (
+                os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
+                os.path.abspath(self.launch_config), os.path.abspath(self.plan))
         log.debug('executing: %s', cmd)
         code = subprocess.call(cmd, shell=True, cwd=self.source_directory)
         if code!=0:
