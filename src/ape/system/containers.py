@@ -176,11 +176,11 @@ class Containers(object):
     def _generate_plan(self):
         logconfig = self.config.get('containers.logging-config')
         if logconfig:
-            cmd = 'bin/generate-plan --profile %s --rel %s --launch %s --logconfig %s %s' % (
+            cmd = 'bin/generate-plan --profile %s --rel %s --launch %s --logconfig %s --ignore-bootlevels %s' % (
                         os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
                         os.path.abspath(self.launch_config), os.path.abspath(logconfig), os.path.abspath(self.plan))
         else:
-            cmd = 'bin/generate-plan --profile %s --rel %s --launch %s %s' % (
+            cmd = 'bin/generate-plan --profile %s --rel %s --launch %s --ignore-bootlevels %s' % (
                 os.path.abspath(self.cloud_config), os.path.abspath(self.deploy_config),
                 os.path.abspath(self.launch_config), os.path.abspath(self.plan))
         log.debug('executing: %s', cmd)
