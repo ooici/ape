@@ -70,8 +70,9 @@ class PerformanceListener(Listener):
         ## TODO: result.data.keys() is int # granules, values() is time in seconds
         ## need to record rate -- currently assuming its always 100
         value = result.data.values()
-        if 'first' in result.data:
-            log.info('transform %s got first granule in %f seconds', component, value[0])
+        log.debug('received peformance data from %s: %r', component, value)
+#        if 'first' in result.data:
+#            log.info('transform %s got first granule in %f seconds', component, value[0])
         else:
             with self.lock:
                 if component not in self.latest_rates:
@@ -318,8 +319,8 @@ class SystemTest(object):
             msg = future.get()
             if msg.exception:
                 raise msg.exception
-            else:
-                log.info('result: %r',msg.result)
+#            else:
+#                log.info('result: %r',msg.result)
             # give some time for things to stabilize
             time.sleep(delay)
 
