@@ -834,7 +834,7 @@ def service_gateway_agent_request(device_id, operation_name, params={}):
         resp = json.loads(resp.content)
         return _extract_response(resp)
     else:
-        raise ApeException('HTTP error %d from service gateway'%resp.status_code)
+        raise ApeException('HTTP error %d from service gateway' % resp.status_code)
 
 def _extract_response(resp):
     ## handle HTTP error
@@ -849,7 +849,7 @@ def _extract_response(resp):
         ## failure with exception trace
         elif 'GatewayError' in resp['data'] and 'Trace' in resp['data']['GatewayError']:
             log.error('gateway error response:\n%s', resp['data']['GatewayError']['Trace'])
-            raise ApeException('gateway failure response: %r'%resp)
+            raise ApeException('gateway failure response: %r' % resp['data']['GatewayError']['Trace'])
         ## some other error resonse
         else:
             log.error('GatewayResponse not found in data: %s', pprint.pformat(resp['data']))

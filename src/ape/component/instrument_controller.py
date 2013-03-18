@@ -102,7 +102,15 @@ class InstrumentController(ApeComponent):
                 log.debug('[%d] sending command to device %s agent: %s', attempt, device_id, cmd)
                 try:
                     execution_start = time.time()
-                    ServiceApi.instrument_execute_agent(device_id, cmd)
+                    try:
+                        ServiceApi.instrument_execute_agent(device_id, cmd)
+                    except ApeException as ae:
+                        # if previous command timed out, it could have succeeded even though it returned an error
+                        # HACK assume it did, get better info about state later...
+                        if 'Command %s not handled in state'%cmd not in str(ae):
+                            raise ae #all other exceptions handle below (retry cmd)
+                        else:
+                            log.warn("got an error executing %s, but assuming the previous state change was successful", cmd)
                     execution_end = time.time()
                     all_times[ 'wait_'+cmd ] = execution_start - wait_begin
                     all_times[ cmd ] = execution_end - execution_start
