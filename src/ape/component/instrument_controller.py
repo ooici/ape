@@ -111,6 +111,7 @@ class InstrumentController(ApeComponent):
                             raise ae #all other exceptions handle below (retry cmd)
                         else:
                             log.warn("got an error executing %s, but assuming the previous state change was successful", cmd)
+                            # continue below as if command succeeded
                     execution_end = time.time()
                     all_times[ 'wait_'+cmd ] = execution_start - wait_begin
                     all_times[ cmd ] = execution_end - execution_start

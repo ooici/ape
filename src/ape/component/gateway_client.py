@@ -766,7 +766,7 @@ def render_service_gateway_response(service_gateway_resp, raw_return=None):
                 log.trace('5 returning')
                 return response
         except Exception, e:
-            log.error('exception extracting: %s', e, exc_info=True)
+            log.error('exception extracting result: %s\nresponse: %r', e, resp, exc_info=True)
             data = resp['data']
             log.trace('3 data: %r', data)
             return data
