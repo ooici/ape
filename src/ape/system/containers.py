@@ -49,6 +49,7 @@ class Containers(object):
         self.rabbit = rabbit
         self.graylog = graylog
         self.elasticsearch = elasticsearch
+        # zookeeper
         self.proc = None
 
     def create_launch_plan(self):
@@ -96,6 +97,11 @@ class Containers(object):
 
         data['graylog']['host'] = self.config.get('graylog.hostname')
 
+        # TODO: get from config file
+        data['zookeeper'] = {
+            'enabled': True,
+            'hosts': [ 'zk01.dev.oceanobservatories.org', 'zk02.dev.oceanobservatories.org', 'zk03.dev.oceanobservatories.org']
+        }
         url = self.config.get('containers.software.url')
         if url:
             if 'packages' not in data or not data['packages']:
