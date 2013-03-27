@@ -73,14 +73,14 @@ class PerformanceListener(Listener):
         log.debug('received peformance data from %s: %r', component, value)
 #        if 'first' in result.data:
 #            log.info('transform %s got first granule in %f seconds', component, value[0])
-        else:
-            with self.lock:
-                if component not in self.latest_rates:
-                    self.latest_rates[component] = []
-                rate_list = self.latest_rates[component]
-                rate_list[0:0] = value
-                if len(rate_list)>self.keep_history:
-                    rate_list[self.keep_history:] = [ ]
+#        else:
+        with self.lock:
+            if component not in self.latest_rates:
+                self.latest_rates[component] = []
+            rate_list = self.latest_rates[component]
+            rate_list[0:0] = value
+            if len(rate_list)>self.keep_history:
+                rate_list[self.keep_history:] = [ ]
     def get_rate(self, component, samples=1):
         with self.lock:
             if component not in self.latest_rates:
