@@ -238,11 +238,11 @@ class SystemTest(object):
         range_str = config.get("range").split('-')
         return xrange(int(range_str[0]), int(range_str[1])+1)
 
-    def init_device(self, config, n, catch_up_frequency=1):
+    def init_device(self, config, n, catch_up_frequency=1, timeout=300):
 #        log.info('executing _preload_template: %d', n)
         self._preload_template(config, xrange(n,n+1))
 #        log.info('executing start_devices: %d', n)
-        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1), catch_up_frequency=catch_up_frequency)
+        self.start_devices(self.config, self.manager, nrange=xrange(n,n+1), catch_up_frequency=catch_up_frequency, timeout=timeout)
 
     def _preload_path(self, config):
         name = config.get("name")
@@ -283,7 +283,7 @@ class SystemTest(object):
             manager.send_request(AddComponent(ims), agent_filter=agent_id(self.controller_agent), component_filter=component_id('AGENT'))
         return self.controller_agent
 
-    def start_devices(self, config, manager, nrange=None, catch_up_frequency=1, catch_up_time=2400):
+    def start_devices(self, config, manager, nrange=None, catch_up_frequency=1, catch_up_time=2400, timeout=300):
         """ start all devices defined in config file """
         range_str = config.get("start-devices.range").split('-')
         template = config.get("start-devices.devices")
@@ -314,8 +314,8 @@ class SystemTest(object):
                 raise msg.exception
             device_id = msg.result
             future = self.answer_listener.expect_message()
-            manager.send_request(StartDevice(device_id), component_filter=component_id('device_controller'))
-            future.wait(timeout=60)
+            manager.send_request(StartDevice(device_id, timeout=timeout), component_filter=component_id('device_controller'))
+            future.wait(timeout=timeout)
             msg = future.get()
             if msg.exception:
                 raise msg.exception

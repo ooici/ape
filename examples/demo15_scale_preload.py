@@ -20,17 +20,21 @@ def _step(msg):
 def _exists():
     log.info('-----> db exists? %r' % os.path.exists('/Users/jnewbrough/.cloudinitd/cloudinitd-demo15.db'))
 
-def _rates(data):
+def _rates(data, maxn):
     if data:
         min_value = 10000
         max_value = -5
         sum = 0
+        devices = [' '] + ['X']*maxn
         for key in data:
             value = 6000/data[key]
             min_value = min(min_value,value)
             max_value = max(max_value,value)
             sum += value
-        _step("reporting rates for %d devices, min %f, max %f, avg %f (msgs/min), total %f (msgs/sec)" % (len(data), min_value, max_value, sum/len(data), sum/60))
+            n = int(key.split('_')[1])
+            devices[n] = '.'
+        _step("reporting rates for %d devices, min %f, max %f, avg %f (msgs/min), total %f (msgs/sec)\n%s" % (len(data), min_value, max_value, sum/len(data), sum/60, "".join(devices)))
+
     else:
         _step("no rates reported yet")
 
@@ -38,7 +42,7 @@ def main():
     start_time = time.time()
     log = logging.getLogger('test')
     config = read_test_configuration()
-#    _step('config:\n' + pformat(config.as_dict()))
+    #    _step('config:\n' + pformat(config.as_dict()))
     _step('read config file')
     test = SystemTest(config)
 
@@ -65,7 +69,7 @@ def main():
             test.init_device(config,n, catch_up_frequency=50)
             elapsed = time.time() - device_begin
             _step("completed device %d launch in %f seconds" % (n,elapsed))
-            _rates(test.get_message_rates())
+            _rates(test.get_message_rates(), n)
 
         _step('performing test')
         results = test.perform_test()
