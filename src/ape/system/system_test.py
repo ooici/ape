@@ -247,8 +247,9 @@ class SystemTest(object):
     def _preload_path(self, config):
         name = config.get("name")
         path = config.get("path") or TESTED_DOC
+        resources = config.get("resources") or DEFAULT_CATEGORIES
         scenarios = config.get("scenarios")
-        self._preload(name, PathConfiguration(path=path, scenarios=scenarios))
+        self._preload(name, PathConfiguration(path=path, scenarios=scenarios, resources=resources))
 
     def _preload_template(self, config, nrange=None):
         name = config.get("name")

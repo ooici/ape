@@ -35,9 +35,10 @@ class Configuration(object):
     pass
 
 class PathConfiguration(Configuration):
-    def __init__(self, path=None, scenarios=None):
+    def __init__(self, path=None, scenarios=None, resources=None):
         self.path = path
         self.scenarios = scenarios
+        self.resources = resources
 
 class TemplateConfiguration(Configuration):
     def __init__(self, range, templates):
@@ -101,6 +102,7 @@ class _PreloadBaseTask(object):
 class _PreloadPathTask(_PreloadBaseTask):
     def perform_preload(self):
         self.loader.path = self.config.path
+        self.loader.categories = self.config.resources
         self.loader.load_ion(self.config.scenarios)
 
 class _PreloadTemplateTask(_PreloadBaseTask):

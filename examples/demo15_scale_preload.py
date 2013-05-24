@@ -42,7 +42,6 @@ def main():
     start_time = time.time()
     log = logging.getLogger('test')
     config = read_test_configuration()
-    #    _step('config:\n' + pformat(config.as_dict()))
     _step('read config file')
     test = SystemTest(config)
 
@@ -77,7 +76,7 @@ def main():
         if results:
             _step('results: ' + str(results))
     except Exception,e:
-        log.error('test failed', exc_info=True)
+        log.error('test failed @ %s', time.ctime(), exc_info=True)
     finally:
         _step('test complete')
         test.stop_system()
