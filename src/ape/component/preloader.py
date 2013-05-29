@@ -110,6 +110,7 @@ class _PreloadTemplateTask(_PreloadBaseTask):
     def perform_preload(self):
         log.info('config: %r', self.config)
         row = {}
+        self.loader.attachment_path="res/preload/r2_ioc/attachments",
         self.loader.prepare_loader()
         for type in DEFAULT_CATEGORIES:
             log.info('checking for template of category %s', type)
