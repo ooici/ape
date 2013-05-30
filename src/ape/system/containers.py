@@ -100,7 +100,7 @@ class Containers(object):
         # TODO: get from config file
         data['zookeeper'] = {
             'enabled': True,
-            'hosts': [ 'zk01.dev.oceanobservatories.org', 'zk02.dev.oceanobservatories.org', 'zk03.dev.oceanobservatories.org']
+            'hosts': [ 'zk01.s.oceanobservatories.org', 'zk02.s.oceanobservatories.org', 'zk03.s.oceanobservatories.org']
         }
         url = self.config.get('containers.software.url')
         if url:
@@ -242,7 +242,7 @@ class Containers(object):
         return vars
 
     def get_process_list(self):
-        cmd='ceictl -n %s process list' % self.name
+        cmd='ceictl -n %s -t 60 process list' % self.name
 #        print '====>>> about to execute: ' + cmd
 
         # HACK: cannot launch into BG and then connect -- CloudInitD will throw exception.  so must always wait until launch completes instead
