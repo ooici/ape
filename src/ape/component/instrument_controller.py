@@ -123,6 +123,10 @@ class InstrumentController(ApeComponent):
                         log.error("giving up after repeated failures")
                         self.report(OperationResult(result='device %s failed at cmd: %s'%(device_id,cmd), exception=e))
                         return
+                    elif 'Command not handled in current state' in str(e):
+                        log.warn('assuming state change was successful even after an error', exc_info=True)
+                        break # previous attempt succeeded after an error was returned (maybe!)
+                    # otherwise try again
                     time.sleep(pause_time)
         self.report(OperationResult(result=all_times))
 
