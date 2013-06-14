@@ -55,11 +55,11 @@ class Preloader(ApeComponent):
         self.report(result)
 
 class _PreloadBaseTask(object):
-    loader = IONLoader()
     def __init__(self, config, process, container):
         self.config = config
-#        self.loader = IONLoader()
+        self.loader = IONLoader()
         self.loader.categories = DEFAULT_CATEGORIES
+        self.loader.excludecategories = []
         self.loader.debug = self.loader.loadooi = self.loader.loadui = \
           self.loader.exportui = self.loader.update = self.loader.bulk = False
         self.loader.container = container
