@@ -93,7 +93,7 @@ class _PreloadBaseTask(object):
     def prepare_loader(self):
         if not self.loader.resource_ids:
             self.loader._load_system_ids()
-        self.loader._prepare_incremental()
+            self.loader._prepare_incremental()
 
 class _PreloadPathTask(_PreloadBaseTask):
     def perform_preload(self):
