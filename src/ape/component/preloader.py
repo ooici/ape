@@ -78,11 +78,11 @@ class _PreloadBaseTask(object):
         self.success = False
 
     def run(self):
-        try:
-            self.prepare_loader()
-        except:
-            log.error('preload component failed to initialize', exc_info=True)
-            return
+        #try:
+        #    self.prepare_loader()
+        #except:
+        #    log.error('preload component failed to initialize', exc_info=True)
+        #    return
         try:
             self.perform_preload()
             self.success = True
