@@ -2,11 +2,6 @@
 component to put load on rabbit MQ from within the container
 
 """
-import random
-import string
-from threading import Thread
-import time
-import traceback
 from gevent.event import AsyncResult
 from pika.adapters.select_connection import SelectConnection
 from pika.connection import ConnectionParameters
@@ -14,11 +9,11 @@ from pika.credentials import PlainCredentials
 from pika.reconnection_strategies import SimpleReconnectionStrategy
 from pyon.util.log import log
 from pyon.core.bootstrap import CFG
-from ape.common.requests import StartRequest, StopRequest, ChangeConfiguration, PerformanceResult
 from ape.common.types import ApeComponent, ApeException, ApeRequest, ApeResult
 import couchdb
 from pyon.datastore.id_factory import SaltedTimeIDFactory, RandomIDFactory
 from ion.processes.bootstrap.ion_loader import IONLoader, DEFAULT_CATEGORIES
+from ion.processes.bootstrap.ui_loader import UILoader
 
 class PerformPreload(ApeRequest):
     def __init__(self, id, config):
@@ -35,10 +30,11 @@ class Configuration(object):
     pass
 
 class PathConfiguration(Configuration):
-    def __init__(self, path=None, scenarios=None, resources=None):
+    def __init__(self, path=None, scenarios=None, resources=None, uipath=None):
         self.path = path
         self.scenarios = scenarios
         self.resources = resources
+        self.uipath = uipath
 
 class TemplateConfiguration(Configuration):
     def __init__(self, range, templates):
@@ -103,7 +99,12 @@ class _PreloadPathTask(_PreloadBaseTask):
     def perform_preload(self):
         self.loader.path = self.config.path
         self.loader.categories = self.config.resources
-        self.loader.attachment_path="res/preload/r2_ioc/attachments",
+        self.loader.attachment_path="res/preload/r2_ioc/attachments"
+
+        if self.config.uipath:
+            ui_loader = UILoader(self.loader)
+            ui_loader.load_ui(self.config.uipath)
+
         self.loader.load_ion(self.config.scenarios)
 
 class _PreloadTemplateTask(_PreloadBaseTask):

@@ -31,8 +31,11 @@ def _rates(data, maxn):
             min_value = min(min_value,value)
             max_value = max(max_value,value)
             sum += value
-            n = int(key.split('_')[1])
-            devices[n] = '.'
+            try:
+                n = int(key.split('_')[-1])
+                devices[n] = '.'
+            except:
+                log.info('failed to parse message rate key: %s', key)
         _step("reporting rates for %d devices, min %f, max %f, avg %f (msgs/min), total %f (msgs/sec)\n%s" % (len(data), min_value, max_value, sum/len(data), sum/60, "".join(devices)))
 
     else:
