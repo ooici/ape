@@ -61,7 +61,8 @@ class _PreloadBaseTask(object):
         self.loader.categories = DEFAULT_CATEGORIES
         self.loader.excludecategories = []
         self.loader.debug = self.loader.loadooi = self.loader.loadui = \
-          self.loader.exportui = self.loader.update = self.loader.bulk = False
+          self.loader.exportui = self.loader.update = self.loader.bulk = \
+          self.loader.idmap = self.loader.clearcols = False
         self.loader.container = container
         self.loader.rpc_sender = process
         self.loader.CFG = process.CFG
