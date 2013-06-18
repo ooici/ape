@@ -249,7 +249,8 @@ class SystemTest(object):
         path = config.get("path") or TESTED_DOC
         resources = config.get("resources") or DEFAULT_CATEGORIES
         scenarios = config.get("scenarios")
-        self._preload(name, PathConfiguration(path=path, scenarios=scenarios, resources=resources))
+        uipath = config.get("uipath")
+        self._preload(name, PathConfiguration(path=path, scenarios=scenarios, resources=resources, uipath=uipath))
 
     def _preload_template(self, config, nrange=None):
         name = config.get("name")
