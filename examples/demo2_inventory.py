@@ -36,9 +36,9 @@ def main():
     show_inventory(l.inventory)
     wait(10)
 
-    sim1 = InstrumentSimulator('ins1', None, InstrumentConfiguration('str1', 0.05))
+    sim1 = InstrumentSimulator('ins1', None, InstrumentConfiguration('str1', 0.05, easy_registration=False))
     r1 = AddComponent(sim1)
-    m.send_request(r1)
+    m.send_request(r1, component_filter=component_id('AGENT'))
     print 'creating sim1'
 #    sleep(5)
 

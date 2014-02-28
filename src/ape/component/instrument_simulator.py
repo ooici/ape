@@ -14,18 +14,21 @@ from interface.services.coi.iresource_registry_service import ResourceRegistrySe
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceClient
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
-
+from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from coverage_model import ParameterDictionary
+from coverage_model.parameter import ParameterContext, ParameterDictionary
+from coverage_model.parameter_types import QuantityType
 from math import sin
 from time import time, sleep
 from threading import Thread
 import traceback
-
+import numpy as np
 import pickle
 from ion.services.dm.utility.granule_utils import CoverageCraft
 
 class Configuration(object):
     def __init__(self, data_product, interval_seconds, instrument_configuration=None, sleep_even_zero=True,
-                 easy_registration=True, persist_product=False,
+                 easy_registration=False, persist_product=False,
                  timing_rate=500, log_timing=True, report_timing=True, include_size=False):
         self.data_product = data_product
         self.interval = interval_seconds           # target rate (seconds) to publish a granule
@@ -85,12 +88,17 @@ class InstrumentSimulator(ApeComponent):
         # TODO: handle more than one ID returned from registry
         # TODO: fail if request register but already in registry (and not easy_registration)
         # TODO: should register device agent
+        log.debug('registering instrument')
         product_ids,_ = self.resource_registry.find_resources(RT.DataProduct, None, self.configuration.data_product, id_only=True)
         if len(product_ids) > 0:
-            if self.configuration.easy_registration:
-                self.data_product_id = product_ids[0]
-            else:
-                raise ApeException('should not find data product in registry until i add it: ' + self.configuration.data_product)
+            log.debug('data product was already in the registry')
+            self.data_product_id = product_ids[0]
+            # if self.configuration.easy_registration:
+            #     self.data_product_id = product_ids[0]
+            # else:
+            #     #raise ApeException('should not find data product in registry until i add it: ' + self.configuration.data_product)
+            #     ## TODO need ID from name:  self.data_product_id = self.data_product_client.read_data_product(data_product=self.configuration.data_product)
+            #     pass
         else:
             log.debug('adding data product to the registry')
             # Create InstrumentDevice
@@ -109,7 +117,7 @@ class InstrumentSimulator(ApeComponent):
             parameter_dictionary = parameter_dictionary.dump()
             data_product = IonObject(RT.DataProduct,name=self.configuration.data_product,description='ape producer', spatial_domain=sdom, temporal_domain=tdom)
             stream_def_id = self._get_streamdef_id(parameter_dictionary)
-            self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=stream_def_id, parameter_dictionary=parameter_dictionary)
+            self.data_product_id = self.data_product_client.create_data_product(data_product=data_product, stream_definition_id=stream_def_id)
             self.damsclient.assign_data_product(input_resource_id=device_id, data_product_id=self.data_product_id)
             if self.configuration.persist_product:
                 self.data_product_client.activate_data_product_persistence(data_product_id=self.data_product_id, persist_data=True, persist_metadata=True)
@@ -157,6 +165,7 @@ class InstrumentSimulator(ApeComponent):
         def __init__(self, instrument):
             Thread.__init__(self)
             self.instrument = instrument
+            self.daemon = True
         def run(self):
             self.instrument.run()
 
@@ -165,7 +174,50 @@ class InstrumentSimulator(ApeComponent):
     def stop_sending(self):
         self.emit_granules = False
 
+    def _get_parameter_dictionary(self):
+        pdict = ParameterDictionary()
+
+        cond_ctxt = ParameterContext('salinity', param_type=QuantityType(value_encoding=np.float64))
+        cond_ctxt.uom = 'unknown'
+        cond_ctxt.fill_value = 0e0
+        pdict.add_context(cond_ctxt)
+
+        pres_ctxt = ParameterContext('lat', param_type=QuantityType(value_encoding=np.float64))
+        pres_ctxt.uom = 'unknown'
+        pres_ctxt.fill_value = 0x0
+        pdict.add_context(pres_ctxt)
+
+        temp_ctxt = ParameterContext('lon', param_type=QuantityType(value_encoding=np.float64))
+        temp_ctxt.uom = 'unknown'
+        temp_ctxt.fill_value = 0x0
+        pdict.add_context(temp_ctxt)
+
+        oxy_ctxt = ParameterContext('oxygen', param_type=QuantityType(value_encoding=np.float64))
+        oxy_ctxt.uom = 'unknown'
+        oxy_ctxt.fill_value = 0x0
+        pdict.add_context(oxy_ctxt)
+
+        internal_ts_ctxt = ParameterContext(name='internal_timestamp', param_type=QuantityType(value_encoding=np.float64))
+        internal_ts_ctxt._derived_from_name = 'time'
+        internal_ts_ctxt.uom = 'seconds'
+        internal_ts_ctxt.fill_value = -1
+        pdict.add_context(internal_ts_ctxt, is_temporal=True)
+
+        driver_ts_ctxt = ParameterContext(name='driver_timestamp', param_type=QuantityType(value_encoding=np.float64))
+        driver_ts_ctxt._derived_from_name = 'time'
+        driver_ts_ctxt.uom = 'seconds'
+        driver_ts_ctxt.fill_value = -1
+        pdict.add_context(driver_ts_ctxt)
+
+        return pdict
+
     def run(self):
+        try:
+            self.do_run()
+        except:
+            log.exception('instrument simulator thread shutting down')
+
+    def do_run(self):
         ''' main loop: essentially create granule, publish granule, then pause to remain at target rate.
             three lines of the useful code marked with ###, everything else is timing/reporting.
         '''
@@ -174,6 +226,17 @@ class InstrumentSimulator(ApeComponent):
         granule_count = iteration_count = granule_sum_size = 0
         granule_elapsed_seconds = publish_elapsed_seconds = sleep_elapsed_seconds = iteration_elapsed_seconds = 0.
         do_timing = self.configuration.report_timing or self.configuration.log_timing
+        parameter_dictionary = self._get_parameter_dictionary() #DatasetManagementServiceClient(node=self.agent.container.node).read_parameter_dictionary_by_name('ctd_parsed_param_dict')
+        if not parameter_dictionary:
+            log.error('failed to find parameter dictionary: ctd_parsed_param_dict (producer thread aborting)')
+            return
+        if type(parameter_dictionary) == dict:
+            log.debug('pdict is dict')
+        elif isinstance(parameter_dictionary,ParameterDictionary):
+            log.debug('pdict is ParameterDictionary')
+        else:
+            log.warn('invalid pdict: %r', parameter_dictionary)
+            parameter_dictionary = parameter_dictionary.__dict__
 
         while self.keep_running:
             if self.emit_granules:
@@ -183,7 +246,7 @@ class InstrumentSimulator(ApeComponent):
                     granule_count+=1
 
                 ### step 1: create granule
-                granule = self.configuration.instrument.get_granule(time=time())
+                granule = self.configuration.instrument.get_granule(time=time(), pd=parameter_dictionary)
 
                 if do_timing:
                     granule_end = publish_start = time()
@@ -255,3 +318,4 @@ class InstrumentSimulator(ApeComponent):
                 # if not emitting granules, don't do timing either
                 # and don't allow to sleep for too short a time and hog CPU
                 sleep(max(10,self.configuration.interval))
+                log.debug('not emitting')

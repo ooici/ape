@@ -7,7 +7,6 @@ from ion.services.dm.utility.granule import RecordDictionaryTool
 from numpy import array
 from pyon.public import log
 from math import sin
-from ion.util.parameter_yaml_IO import get_param_dict
 
 def build_instrument(configuration):
     ''' factory method to build instruments based on configuration '''
@@ -37,15 +36,16 @@ class InstrumentType(object):
 class SimpleInstrument(InstrumentType):
     ''' instrument generating a single value at each time t with a fixed (x,y,h) location '''
     def __init__(self):
-        self.parameter_dictionary = get_param_dict('ctd_parsed_param_dict')
+        #self.parameter_dictionary = DatasetManagementServiceClient(node=self.agent.container.node).read_parameter_dictionary_by_name('ctd_parsed_param_dict')
+        #self.parameter_dictionary = get_param_dict('ctd_parsed_param_dict')
         self.message_size = 1
         self.position = (0,0,0)
 
-    def get_granule(self, time=None):
+    def get_granule(self, time=None, pd=None):
         lat,lon,_ = self.get_location(time)
         value = self.get_value(time)
 
-        pkg = RecordDictionaryTool(self.parameter_dictionary)
+        pkg = RecordDictionaryTool(pd)
         pkg['salinity'] = array([value]*self.message_size)
         pkg['lat'] = array([lat]*self.message_size)
         pkg['lon'] = array([lon]*self.message_size)

@@ -12,7 +12,7 @@ import gevent.monkey
 gevent.monkey.patch_all(aggressive=False)
 
 from ape.manager.simple_manager import SimpleManager, InventoryListener, Listener
-from ape.common.requests import PingRequest, AddComponent, StartRequest, InventoryRequest, StopRequest, PerformanceResult
+from ape.common.requests import PingRequest, AddComponent, StartRequest, InventoryRequest, StopRequest, PerformanceResult, RegisterWithContainer
 from ape.component.instrument_simulator import InstrumentSimulator
 from ape.component.instrument_simulator import Configuration as InstrumentConfiguration
 from ape.component.consumer import DataProductConsumer
@@ -61,16 +61,33 @@ def main():
         producer_component_name = 'pro-'+ext
         consumer_component_name = 'con-'+ext
 
-        producer_config = InstrumentConfiguration(data_product_name, 0, instrument_configuration=100,
+        producer_config = InstrumentConfiguration(data_product_name, 1, instrument_configuration=100, easy_registration=True,
                                     sleep_even_zero=False,
                                     persist_product=False, report_timing=True, timing_rate=5000)
         producer = InstrumentSimulator(producer_component_name, None, producer_config)
         consumer = DataProductConsumer(consumer_component_name, None, ConsumerConfiguration(data_product_name, log_value=False))
+        # consumer = DataProductConsumer(consumer_component_name, None, ConsumerConfiguration('jon.ion.xs.ioncore.xp.science_data', log_value=False))
 
+        print 'creating producer and consumer'
         m.send_request(AddComponent(producer), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
         m.send_request(AddComponent(consumer), agent_filter=agent_id(agent), component_filter=component_id('AGENT'))
+
+        # print 'next: register producer (creates publisher)'
+        # wait(2)
+        # print 'registering producer'
+        # m.send_request(RegisterWithContainer(), agent_filter=agent_id(agent), component_filter=component_id(producer_component_name))
+
+        print 'next: start consumer process'
+        wait(2)
+        print 'starting consumer'
         m.send_request(StartRequest(), agent_filter=agent_id(agent), component_filter=component_id(consumer_component_name))
+
+        print 'next: starting producer'
+        wait(2)
+        print 'starting producer'
         m.send_request(StartRequest(), agent_filter=agent_id(agent), component_filter=component_id(producer_component_name))
+
+        print 'now all components are running'
         sleep(2) # need at least a little time to let first component register name or second may fail due to race condition
 
     # log results as they arrive for 5 min then stop traffic

@@ -67,9 +67,9 @@ class PyonApeAgent(StandaloneProcess,BaseApeAgent):
         self.thread.start()
     def stop_agent(self):
         self.keep_running = False
-        self.thread.kill()
         for component in self.components.itervalues():
             component.stop_component()
+        self.thread.kill()
         super(PyonApeAgent,self).on_quit()
     def add_component(self, component_id, component):
         ''' subclass should add_components created to make sure they can be shutdown from on_quit '''

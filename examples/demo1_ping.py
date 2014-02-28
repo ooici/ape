@@ -25,7 +25,7 @@ def wait(a):
 
 def main():
     p = PingRequest()
-    m = SimpleManager(broker_hostname='pub-4-106', broker_username='bunny', broker_password='bunny')
+    m = SimpleManager(broker_hostname='localhost', broker_username='guest', broker_password='guest')
 
     print 'sending 100 ping requests to all components on all agents, one every 5 seconds'
     for n in xrange(100):
